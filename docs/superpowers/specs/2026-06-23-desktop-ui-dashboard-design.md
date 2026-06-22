@@ -123,15 +123,22 @@ surfaced as an "orphan" notice (defensive; should not happen with the mock).
 
 ### 3.1 Types and schema sourcing
 
-- **Types:** `desktop-ui/` declares `@alfred/protocol` as a `workspace:*` dependency via a
-  new root `pnpm-workspace.yaml` listing `protocol` and `desktop-ui`. The protocol package's
-  `main`/`types` already point at `gen/typescript/index.ts`, so `import type` resolves with
-  no changes to `protocol/`.
-- **Schema JSON (runtime, for Ajv):** imported directly from `protocol/schema/protocol.schema.json`
-  through a build alias (Vite `resolve.alias` + matching `tsconfig` path + Vitest alias),
-  e.g. `import schema from "@alfred/protocol-schema"`. This reads the frozen file in place —
-  **no copy, no edit to `protocol/`** (its `package.json` has no `exports` for the schema and
-  we will not add one, since that would modify the frozen contract).
+`desktop-ui/` is a **self-contained pnpm package** (its own lockfile + `node_modules`),
+installed with `pnpm install` from inside `desktop-ui/`. It deliberately does **not** create
+a root pnpm workspace: `protocol/` already installs standalone (its `pnpm-workspace.yaml`
+only carries `allowBuilds` config, no `packages:`), and pulling it into a root workspace
+would change its install topology and risk its existing flows/CI. Resolution is by alias
+instead, which keeps the exact import specifiers the brief requires with zero blast radius
+on `protocol/`:
+
+- **Types:** `import type { Message, … } from "@alfred/protocol"` resolves via a `tsconfig`
+  path mapping + Vite/Vitest `resolve.alias`, both pointing at the frozen
+  `../protocol/gen/typescript/index.ts`. Type-only imports are erased at build, so there is
+  no runtime coupling; the alias also covers any value import defensively.
+- **Schema JSON (runtime, for Ajv):** `import schema from "@alfred/protocol-schema"` resolves
+  via a Vite/Vitest alias to `../protocol/schema/protocol.schema.json`, with an ambient
+  `declare module "@alfred/protocol-schema"` for the type. This reads the frozen file in
+  place — **no copy, no edit to `protocol/`**.
 
 ### 3.2 Handshake & validation
 
@@ -192,9 +199,10 @@ Mirror `protocol/mock/client.ts`:
 
 ## 6. Build sequencing (logical commits on `phase-1-ui`)
 
-1. **Workspace wiring** — root `pnpm-workspace.yaml`; scaffold `desktop-ui/` (Vite + React +
-   TS strict, Tailwind, Vitest); `@alfred/protocol` workspace dep; schema alias. Verify
-   `tsc --noEmit` and a trivial test pass. No edits to `protocol/`.
+1. **Scaffold + contract wiring** — self-contained `desktop-ui/` (Vite + React + TS strict,
+   Tailwind, Vitest); `@alfred/protocol` + `@alfred/protocol-schema` resolved via tsconfig
+   path + Vite/Vitest aliases into the frozen `../protocol/`. Verify `tsc --noEmit` and a
+   trivial test pass. No edits to `protocol/`, no root workspace.
 2. **Protocol layer (TDD)** — `ProtocolClient` + `fetchStatus`, tested against a fake
    WebSocket and the live mock.
 3. **State + minimal UI** — Zustand store + connection bar + event stream + command input
@@ -216,8 +224,9 @@ Commits are plain (no `Co-Authored-By: Claude` trailer), conventional and scoped
 
 - **Webview CORS on `GET /status`** — mitigated by routing status through the Tauri HTTP
   plugin and a Vite dev-proxy for browser work (§3.3).
-- **Schema sourcing without touching `protocol/`** — mitigated by a read-only build alias to
-  the frozen file rather than an `exports` edit or a copy (§3.1).
+- **Schema/type sourcing without touching `protocol/`** — mitigated by read-only build
+  aliases into the frozen files rather than a root workspace, an `exports` edit, or a copy
+  (§3.1). `desktop-ui/` installs standalone so `protocol/`'s topology/CI is untouched.
 - **Rust toolchain footprint** — accepted; `rustup` installed up front per decision, Tauri
   used throughout.
 - **Node 25 / pnpm 11** present (AGENTS.md baselines Node 20 / pnpm 9+); newer is compatible.
