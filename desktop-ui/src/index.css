@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #04070d;
+  --color-panel: #0a121f;
+  --color-hud: #38e1ff;
+  --color-hud-dim: #1a6c80;
+  --color-amber: #ffb648;
+  --color-danger: #ff5470;
+  --color-safe: #5ef2a0;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  margin: 0;
+  background: var(--color-void);
+  color: var(--color-hud);
+  font-family: var(--font-mono);
+}
