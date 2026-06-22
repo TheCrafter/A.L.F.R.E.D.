@@ -94,3 +94,15 @@ def test_unsupported_version_is_rejected(client: TestClient):
         assert_valid(err)
         assert err["type"] == "error"
         assert err["code"] == "unsupported_version"
+
+
+def test_non_hello_first_message_is_rejected(client: TestClient):
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({
+            "v": 1, "id": "stray-1", "ts": "2026-06-23T10:00:00Z",
+            "type": "status.request",
+        })
+        err = ws.receive_json()
+        assert_valid(err)
+        assert err["type"] == "error"
+        assert err["code"] == "bad_message"
