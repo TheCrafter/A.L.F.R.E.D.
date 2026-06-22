@@ -47,8 +47,9 @@ Because `ReasoningProvider` is explicitly the swap-point, the concrete model is 
 one-class choice that touches nothing else.
 
 - **Default real provider: Gemini** via the `google-genai` SDK + a free Google AI Studio
-  key. `gemini-2.0-flash` (configurable); supports function calling, which the agent loop
-  needs.
+  key. Default model is whichever **free-tier** model is available (`gemini-2.0-flash` at
+  time of writing; overridable via `GEMINI_MODEL`); it supports function calling, which the
+  agent loop needs. The default deliberately tracks "free", not "best".
 - **Swappable via config/registry** with zero changes elsewhere:
   `ALFRED_PROVIDER ∈ {gemini, groq, ollama, scripted}`. Groq (OpenAI-compatible, free
   tier) and Ollama (local, free, the spec's eventual local-model path) are documented
@@ -97,6 +98,25 @@ class Tool(Protocol):
 
 ---
 
+## 4a. Persona (system-prompt layer)
+
+The full persona is wired in this phase, per the architecture spec §8: a "reluctant
+superintelligence" — Rick-and-Morty-tier snark delivered with weaponized butler courtesy
+and a grudging "…sir".
+
+- **`persona.py`** builds the system instruction handed to the provider each turn,
+  parameterized by an **intensity dial** (`ALFRED_PERSONA_INTENSITY ∈ {off, light, full}`,
+  default `full`).
+- **Hard constraint (from §8):** persona never obscures the *meaning* of a high-stakes
+  confirmation — wit may ride along, but any yes/no must stay unambiguous. The system
+  prompt states this explicitly.
+- Persona shapes only the **real** provider's output. `ScriptedProvider` ignores the
+  system prompt, so the deterministic e2e proof is unaffected. (Activity-scoped persona
+  parameterization from the architecture spec is a Memory-phase concern; Phase 1 ships the
+  base persona + intensity dial only.)
+
+---
+
 ## 5. Architecture (approach A — event-bus-centric)
 
 ```
@@ -111,9 +131,10 @@ class Tool(Protocol):
   connection is a subscriber relaying to its socket. This is what makes spec-mandated
   multi-client broadcast (§4.1: "all observing the same live state") trivial and keeps
   reasoning fully decoupled from transport.
-- **`AgentLoop`** — runs one turn: calls the provider, translates `ProviderEvent`s into
-  protocol messages, executes tool calls via the registry, feeds results back, and
-  re-invokes until a final answer or `ALFRED_MAX_TOOL_ITERATIONS` is reached.
+- **`AgentLoop`** — runs one turn: assembles the system prompt from `persona.py`, calls
+  the provider, translates `ProviderEvent`s into protocol messages, executes tool calls via
+  the registry, feeds results back, and re-invokes until a final answer or
+  `ALFRED_MAX_TOOL_ITERATIONS` is reached.
 - **`TurnManager`** — tracks in-flight turn tasks by `corr` for the global kill switch.
 - **`server.py`** — FastAPI app: `GET /status`, `WS /ws` handshake + intake; wires
   bus ↔ connections. Same stack as the reference mock.
@@ -131,6 +152,7 @@ brain/
 │   ├── messages.py           # new id, RFC-3339 ts, dump(model) -> dict(mode="json", exclude_none=True)
 │   ├── providers/{base,registry,gemini,scripted}.py
 │   ├── tools/{base,registry,echo}.py
+│   ├── persona.py            # system-prompt builder + intensity dial
 │   ├── agent.py              # AgentLoop
 │   ├── session.py            # TurnManager
 │   └── server.py             # FastAPI: GET /status, WS /ws
@@ -202,9 +224,10 @@ in-flight tool is interrupted at the next await point.
 |-----|---------|---------|
 | `ALFRED_PROVIDER` | `gemini` | `gemini` \| `groq` \| `ollama` \| `scripted` |
 | `GEMINI_API_KEY` | — | Google AI Studio free key |
-| `GEMINI_MODEL` | `gemini-2.0-flash` | model id |
+| `GEMINI_MODEL` | free-tier model (`gemini-2.0-flash`) | model id |
 | `ALFRED_HOST` | `127.0.0.1` | bind host |
-| `ALFRED_PORT` | `8765` | bind port (matches mock) |
+| `ALFRED_PORT` | `8766` | bind port — **deliberately not `8765`** so the real brain can run alongside the reference mock (which owns `8765`) during parallel UI dev without colliding |
+| `ALFRED_PERSONA_INTENSITY` | `full` | `off` \| `light` \| `full` |
 | `ALFRED_MAX_TOOL_ITERATIONS` | `5` | agent-loop cap |
 
 ---
@@ -226,7 +249,8 @@ in-flight tool is interrupted at the next await point.
 ## 11. Out of scope (Phase 1)
 
 Memory, real hands/effectors, safety/permission policy beyond emitting the declared
-`RiskTier`, persona tuning beyond a minimal system prompt, voice, Telegram, and any
+`RiskTier`, activity-scoped persona parameterization (the base persona + intensity dial
+*are* in scope; scope-driven tuning is a Memory-phase concern), voice, Telegram, and any
 `protocol/` change. These arrive in their own phases.
 
 ---
@@ -242,6 +266,8 @@ Memory, real hands/effectors, safety/permission policy beyond emitting the decla
       by config, with scripted fallback.
 - [ ] `echo` tool exercised end-to-end through the registry, emitting `agent.action` with
       its risk tier.
+- [ ] Persona system prompt (intensity dial, `full` default) feeds the real provider; the
+      high-stakes-clarity hard constraint is encoded; scripted path unaffected.
 - [ ] Global kill switch cancels in-flight turns → `turn_complete(killed)` + `kill_switch.ack`.
 - [ ] Multiple simultaneous clients all receive the broadcast event stream.
 - [ ] Unmodified `protocol/mock/client.ts` drives the real brain to a valid completed turn
