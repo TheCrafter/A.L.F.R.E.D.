@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
-from jsonschema.validators import Draft202012Validator
 
 SCHEMA_PATH = Path(__file__).parents[2] / "schema" / "protocol.schema.json"
 FIXTURES_DIR = Path(__file__).parents[2] / "fixtures"
