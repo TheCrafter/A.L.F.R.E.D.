@@ -12,4 +12,22 @@ generated Pydantic and TypeScript types live in `gen/` and are committed.
 - `tests/` — round-trip + schema + mock tests
 
 ## Commands
-(Filled in by later tasks.)
+
+Run everything from `protocol/`.
+
+```bash
+uv sync                                   # install Python deps
+pnpm install                              # install Node deps
+
+uv run python scripts/codegen.py          # regenerate Pydantic + TS from schema
+uv run python scripts/codegen.py --python # Python only
+uv run python scripts/codegen.py --typescript
+
+uv run pytest -v                          # Python: schema, fixtures, round-trip, mock
+pnpm exec tsc --noEmit                    # TS: typecheck + conformance
+pnpm exec vitest run                      # TS: Ajv fixture validation
+```
+
+After changing `schema/protocol.schema.json`, **always** re-run codegen and
+commit the regenerated `gen/` files. CI fails if committed output drifts from
+the schema.

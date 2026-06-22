@@ -1,0 +1,54 @@
+name: protocol
+
+on:
+  push:
+    paths: ["protocol/**", ".github/workflows/protocol.yml"]
+  pull_request:
+    paths: ["protocol/**", ".github/workflows/protocol.yml"]
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: protocol
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: protocol/pnpm-lock.yaml
+
+      - name: Install Python deps
+        run: uv sync
+
+      - name: Install Node deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Regenerate types
+        run: uv run python scripts/codegen.py
+
+      - name: Fail on codegen drift
+        run: git diff --exit-code gen/
+
+      - name: Python tests
+        run: uv run pytest -v
+
+      - name: TypeScript typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: TypeScript tests
+        run: pnpm exec vitest run
