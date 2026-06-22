@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alfred.local/protocol/v1.json",
+  "title": "Message",
+  "description": "Any message crossing the ALFRED brain boundary.",
+  "discriminator": { "propertyName": "type" },
+  "oneOf": [
+    { "$ref": "#/$defs/ClientHello" },
+    { "$ref": "#/$defs/ServerHello" },
+    { "$ref": "#/$defs/StatusRequest" },
+    { "$ref": "#/$defs/StatusResponse" },
+    { "$ref": "#/$defs/CommandSubmit" },
+    { "$ref": "#/$defs/CommandAck" },
+    { "$ref": "#/$defs/AgentThought" },
+    { "$ref": "#/$defs/AgentAction" },
+    { "$ref": "#/$defs/AgentMessage" },
+    { "$ref": "#/$defs/AgentTurnComplete" },
+    { "$ref": "#/$defs/KillSwitchActivate" },
+    { "$ref": "#/$defs/KillSwitchAck" },
+    { "$ref": "#/$defs/Error" }
+  ],
+  "$defs": {
+    "Envelope": {
+      "title": "Envelope",
+      "type": "object",
+      "description": "Fields shared by every message.",
+      "properties": {
+        "v": { "type": "integer", "description": "Protocol major version.", "const": 1 },
+        "id": { "type": "string", "description": "Unique id for this message." },
+        "ts": { "type": "string", "format": "date-time", "description": "RFC 3339 UTC timestamp." }
+      },
+      "required": ["v", "id", "ts"]
+    },
+    "Channel": {
+      "title": "Channel",
+      "type": "string",
+      "enum": ["desktop", "telegram", "voice"]
+    },
+    "RiskTier": {
+      "title": "RiskTier",
+      "type": "string",
+      "enum": ["safe", "sensitive", "forbidden"]
+    },
+    "ClientHello": {
+      "title": "ClientHello",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "client.hello" },
+            "client_name": { "type": "string" },
+            "client_version": { "type": "string" },
+            "protocol_version": { "type": "integer", "description": "Highest protocol version the client supports." }
+          },
+          "required": ["type", "client_name", "client_version", "protocol_version"]
+        }
+      ]
+    },
+    "ServerHello": {
+      "title": "ServerHello",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "server.hello" },
+            "corr": { "type": "string", "description": "id of the client.hello being answered." },
+            "server_name": { "type": "string" },
+            "server_version": { "type": "string" },
+            "protocol_version": { "type": "integer", "description": "Negotiated protocol version." },
+            "session_id": { "type": "string" }
+          },
+          "required": ["type", "corr", "server_name", "server_version", "protocol_version", "session_id"]
+        }
+      ]
+    },
+    "StatusRequest": {
+      "title": "StatusRequest",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": { "type": { "const": "status.request" } },
+          "required": ["type"]
+        }
+      ]
+    },
+    "StatusResponse": {
+      "title": "StatusResponse",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "status.response" },
+            "corr": { "type": "string" },
+            "uptime_seconds": { "type": "number" },
+            "server_version": { "type": "string" },
+            "active_scopes": { "type": "array", "items": { "type": "string" } },
+            "busy": { "type": "boolean" }
+          },
+          "required": ["type", "corr", "uptime_seconds", "server_version", "active_scopes", "busy"]
+        }
+      ]
+    },
+    "CommandSubmit": {
+      "title": "CommandSubmit",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "command.submit" },
+            "text": { "type": "string" },
+            "channel": { "$ref": "#/$defs/Channel" },
+            "scope_override": { "type": "string", "description": "Optional manual scope, e.g. 'business'." }
+          },
+          "required": ["type", "text", "channel"]
+        }
+      ]
+    },
+    "CommandAck": {
+      "title": "CommandAck",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "command.ack" },
+            "corr": { "type": "string" },
+            "accepted": { "type": "boolean" },
+            "reason": { "type": "string", "description": "Why rejected, when accepted is false." }
+          },
+          "required": ["type", "corr", "accepted"]
+        }
+      ]
+    },
+    "AgentThought": {
+      "title": "AgentThought",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "agent.thought" },
+            "corr": { "type": "string" },
+            "text": { "type": "string" }
+          },
+          "required": ["type", "corr", "text"]
+        }
+      ]
+    },
+    "AgentAction": {
+      "title": "AgentAction",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "agent.action" },
+            "corr": { "type": "string" },
+            "tool": { "type": "string" },
+            "summary": { "type": "string" },
+            "risk": { "$ref": "#/$defs/RiskTier" }
+          },
+          "required": ["type", "corr", "tool", "summary", "risk"]
+        }
+      ]
+    },
+    "AgentMessage": {
+      "title": "AgentMessage",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "agent.message" },
+            "corr": { "type": "string" },
+            "text": { "type": "string" },
+            "final": { "type": "boolean", "description": "False for a streamed chunk; true for the last chunk of the message." }
+          },
+          "required": ["type", "corr", "text", "final"]
+        }
+      ]
+    },
+    "AgentTurnComplete": {
+      "title": "AgentTurnComplete",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "agent.turn_complete" },
+            "corr": { "type": "string" },
+            "status": { "type": "string", "enum": ["completed", "error", "killed"] }
+          },
+          "required": ["type", "corr", "status"]
+        }
+      ]
+    },
+    "KillSwitchActivate": {
+      "title": "KillSwitchActivate",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "kill_switch.activate" },
+            "channel": { "$ref": "#/$defs/Channel" },
+            "reason": { "type": "string" }
+          },
+          "required": ["type", "channel"]
+        }
+      ]
+    },
+    "KillSwitchAck": {
+      "title": "KillSwitchAck",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "kill_switch.ack" },
+            "corr": { "type": "string" },
+            "halted": { "type": "boolean" }
+          },
+          "required": ["type", "corr", "halted"]
+        }
+      ]
+    },
+    "Error": {
+      "title": "Error",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "error" },
+            "corr": { "type": "string" },
+            "code": { "type": "string", "enum": ["bad_message", "unsupported_version", "unknown_type", "internal"] },
+            "message": { "type": "string" }
+          },
+          "required": ["type", "code", "message"]
+        }
+      ]
+    }
+  }
+}
