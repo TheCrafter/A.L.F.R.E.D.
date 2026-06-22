@@ -6,6 +6,7 @@ import type {
   ServerHello,
   AgentMessage,
   Error as ProtocolError,
+  StatusResponse,
 } from "../../gen/typescript/index.js";
 
 const command: CommandSubmit = {
@@ -39,6 +40,18 @@ const err: ProtocolError = {
   type: "error", code: "unknown_type", message: "nope",
 };
 
-// All four must be assignable to the discriminated union.
-const all: Message[] = [command, hello, chunk, err];
+const status: StatusResponse = {
+  v: 1,
+  id: "s",
+  ts: "2026-06-23T10:00:01Z",
+  type: "status.response",
+  corr: "x",
+  uptime_seconds: 42,
+  server_version: "0.1.0",
+  active_scopes: ["business"],
+  busy: false,
+};
+
+// All five must be assignable to the discriminated union.
+const all: Message[] = [command, hello, chunk, err, status];
 void all;
