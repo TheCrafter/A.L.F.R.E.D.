@@ -1,0 +1,1 @@
+{ "v": 1, "id": "11111111-1111-1111-1111-111111111111", "ts": "2026-06-23T10:00:00Z", "type": "client.hello", "client_name": "desktop-ui", "client_version": "0.1.0", "protocol_version": 1 }

@@ -1,0 +1,1 @@
+{ "v": 1, "id": "88888888-8888-8888-8888-888888888888", "ts": "2026-06-23T10:00:04Z", "type": "agent.action", "corr": "55555555-5555-5555-5555-555555555555", "tool": "shell", "summary": "Run `npm run build`", "risk": "sensitive" }

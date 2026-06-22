@@ -1,0 +1,1 @@
+{ "v": 1, "id": "44444444-4444-4444-4444-444444444444", "ts": "2026-06-23T10:00:01Z", "type": "status.response", "corr": "33333333-3333-3333-3333-333333333333", "uptime_seconds": 12.5, "server_version": "0.1.0", "active_scopes": ["coding"], "busy": false }
