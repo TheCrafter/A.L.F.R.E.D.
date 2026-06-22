@@ -1,0 +1,26 @@
+{
+  "name": "@alfred/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ALFRED shared WebSocket/HTTP contract: generated TypeScript types and reference mock client.",
+  "type": "module",
+  "main": "gen/typescript/index.ts",
+  "types": "gen/typescript/index.ts",
+  "scripts": {
+    "gen:ts": "json2ts -i schema/protocol.schema.json -o gen/typescript/index.ts --additionalProperties --no-style.singleQuote",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "mock:client": "tsx mock/client.ts"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "^14.0.0",
+    "ajv": "^8.13.0",
+    "ajv-formats": "^3.0.1",
+    "ws": "^8.17.0",
+    "@types/ws": "^8.5.10",
+    "@types/node": "^20.12.0",
+    "tsx": "^4.10.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
