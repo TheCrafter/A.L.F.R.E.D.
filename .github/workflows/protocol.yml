@@ -52,3 +52,6 @@ jobs:
 
       - name: TypeScript tests
         run: pnpm exec vitest run
+
+      - name: End-to-end mock (Python server ↔ TS client)
+        run: uv run pytest tests/python/test_integration.py -v
