@@ -81,8 +81,16 @@ async def ws(socket: WebSocket) -> None:
             await socket.close()
             return
 
+        hello_corr = hello.get("id")
+        if hello_corr is None:
+            await socket.send_json(_dump(Error(
+                v=1, id=_mid(), ts=_now(), type="error",
+                code="bad_message", message="Message missing required 'id'.",
+            )))
+            await socket.close()
+            return
         await socket.send_json(_dump(ServerHello(
-            v=1, id=_mid(), ts=_now(), type="server.hello", corr=hello["id"],
+            v=1, id=_mid(), ts=_now(), type="server.hello", corr=hello_corr,
             server_name=SERVER_NAME, server_version=SERVER_VERSION,
             protocol_version=SUPPORTED_PROTOCOL_VERSION, session_id="mock-session",
         )))
@@ -90,16 +98,23 @@ async def ws(socket: WebSocket) -> None:
         while True:
             msg = await socket.receive_json()
             kind = msg.get("type")
+            corr = msg.get("id")
+            if corr is None:
+                await socket.send_json(_dump(Error(
+                    v=1, id=_mid(), ts=_now(), type="error",
+                    code="bad_message", message="Message missing required 'id'.",
+                )))
+                continue
             if kind == "command.submit":
-                await _run_command_turn(socket, msg["id"])
+                await _run_command_turn(socket, corr)
             elif kind == "kill_switch.activate":
                 await socket.send_json(_dump(KillSwitchAck(
                     v=1, id=_mid(), ts=_now(), type="kill_switch.ack",
-                    corr=msg["id"], halted=True,
+                    corr=corr, halted=True,
                 )))
             else:
                 await socket.send_json(_dump(Error(
-                    v=1, id=_mid(), ts=_now(), type="error", corr=msg.get("id"),
+                    v=1, id=_mid(), ts=_now(), type="error", corr=corr,
                     code="unknown_type", message=f"Unhandled type: {kind}",
                 )))
     except WebSocketDisconnect:
