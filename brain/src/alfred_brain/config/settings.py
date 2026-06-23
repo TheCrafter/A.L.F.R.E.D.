@@ -17,6 +17,9 @@ ENV_ALIASES = {
     "persona_intensity": "ALFRED_PERSONA_INTENSITY",
     "max_tool_iterations": "ALFRED_MAX_TOOL_ITERATIONS",
     "log_level": "ALFRED_LOG_LEVEL",
+    "memory_vault_dir": "ALFRED_VAULT_DIR",
+    "memory_embed_model": "ALFRED_EMBED_MODEL",
+    "memory_recall_top_k": "ALFRED_RECALL_TOP_K",
 }
 
 
@@ -39,6 +42,11 @@ class Settings(BaseSettings):
         default=5, ge=1, validation_alias="ALFRED_MAX_TOOL_ITERATIONS")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="INFO", validation_alias="ALFRED_LOG_LEVEL")
+    memory_vault_dir: str | None = Field(default=None, validation_alias="ALFRED_VAULT_DIR")
+    memory_embed_model: str = Field(
+        default="BAAI/bge-small-en-v1.5", validation_alias="ALFRED_EMBED_MODEL")
+    memory_recall_top_k: int = Field(
+        default=5, ge=1, validation_alias="ALFRED_RECALL_TOP_K")
 
     @classmethod
     def settings_customise_sources(

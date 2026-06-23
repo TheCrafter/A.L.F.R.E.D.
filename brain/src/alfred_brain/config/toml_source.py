@@ -22,6 +22,9 @@ SECTION_MAP: dict[tuple[str, str], str] = {
     ("persona", "intensity"): "persona_intensity",
     ("agent", "max_tool_iterations"): "max_tool_iterations",
     ("logging", "level"): "log_level",
+    ("memory", "vault_dir"): "memory_vault_dir",
+    ("memory", "embed_model"): "memory_embed_model",
+    ("memory", "recall_top_k"): "memory_recall_top_k",
 }
 
 
