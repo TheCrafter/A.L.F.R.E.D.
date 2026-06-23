@@ -6,11 +6,11 @@ import { describe, it, expect } from "vitest";
 import { ProtocolClient } from "./client";
 import type { Message } from "@alfred/protocol";
 
-const URL = process.env.ALFRED_MOCK_WS;
+const WS_URL = process.env.ALFRED_MOCK_WS;
 
-describe.skipIf(!URL)("end-to-end against the mock brain", () => {
+describe.skipIf(!WS_URL)("end-to-end against the mock brain", () => {
   it("completes a full command turn with only valid messages", async () => {
-    const client = new ProtocolClient({ url: URL!, reconnect: false });
+    const client = new ProtocolClient({ url: WS_URL!, reconnect: false });
     const seen: string[] = [];
 
     const done = new Promise<void>((resolve, reject) => {
