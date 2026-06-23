@@ -34,9 +34,10 @@ def test_groq_with_key_builds_groq():
     assert isinstance(p, GroqProvider)
 
 
-def test_unknown_provider_falls_back():
-    p = build_provider(Settings(provider="totally-unknown", _env_file=None))
-    assert isinstance(p, ScriptedProvider)
+def test_unknown_provider_rejected():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        Settings(provider="totally-unknown", _env_file=None)
 
 
 @pytest.mark.integration
