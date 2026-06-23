@@ -1,4 +1,4 @@
-import type { Message } from "@alfred/protocol";
+import type { Message, ServerHello } from "@alfred/protocol";
 import { validateMessage } from "./validator";
 
 export type ConnectionPhase =
@@ -69,6 +69,10 @@ export class ProtocolClient {
   protected readonly backoffBaseMs: number;
   protected readonly backoffMaxMs: number;
 
+  private reconnectAttempts = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private manuallyClosed = false;
+
   constructor(options: ProtocolClientOptions) {
     this.url = options.url;
     this.clientName = options.clientName ?? "alfred-desktop-ui";
@@ -111,6 +115,8 @@ export class ProtocolClient {
   }
 
   connect(): void {
+    this.manuallyClosed = false;
+    this.reconnectAttempts = 0;
     this.openSocket("connecting");
   }
 
@@ -135,10 +141,19 @@ export class ProtocolClient {
     });
   }
 
-  // Overridden in Task 4 to schedule reconnects.
   protected onClose(): void {
     this.ws = null;
-    this.setPhase("closed");
+    if (this.manuallyClosed || !this.reconnect) {
+      this.setPhase("closed");
+      return;
+    }
+    const delay = Math.min(
+      this.backoffMaxMs,
+      this.backoffBaseMs * 2 ** this.reconnectAttempts,
+    );
+    this.reconnectAttempts += 1;
+    this.setPhase("reconnecting");
+    this.reconnectTimer = setTimeout(() => this.openSocket("reconnecting"), delay);
   }
 
   protected handleInbound(data: unknown): void {
@@ -164,12 +179,14 @@ export class ProtocolClient {
 
   protected onValidMessage(msg: Message): void {
     if (msg.type === "server.hello") {
+      const hello = msg as ServerHello;
+      this.reconnectAttempts = 0;
       this.setPhase("ready", {
         server: {
-          serverName: msg.server_name,
-          serverVersion: msg.server_version,
-          sessionId: msg.session_id,
-          protocolVersion: msg.protocol_version,
+          serverName: hello.server_name,
+          serverVersion: hello.server_version,
+          sessionId: hello.session_id,
+          protocolVersion: hello.protocol_version,
         },
       });
     } else if (msg.type === "error" && msg.code === "unsupported_version") {
@@ -178,7 +195,35 @@ export class ProtocolClient {
   }
 
   disconnect(): void {
+    this.manuallyClosed = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.ws?.close();
+  }
+
+  submitCommand(text: string, opts: { scopeOverride?: string } = {}): string {
+    const msg: Message = {
+      ...this.envelope(),
+      type: "command.submit",
+      text,
+      channel: "desktop",
+      ...(opts.scopeOverride ? { scope_override: opts.scopeOverride } : {}),
+    };
+    this.sendMessage(msg);
+    return msg.id;
+  }
+
+  activateKillSwitch(reason?: string): string {
+    const msg: Message = {
+      ...this.envelope(),
+      type: "kill_switch.activate",
+      channel: "desktop",
+      ...(reason ? { reason } : {}),
+    };
+    this.sendMessage(msg);
+    return msg.id;
   }
 
   protected envelope(): { v: 1; id: string; ts: string } {
