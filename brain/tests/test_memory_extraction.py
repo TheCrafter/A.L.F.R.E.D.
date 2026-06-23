@@ -1,7 +1,7 @@
 import pytest
 
 from alfred_brain.memory import VaultMemory
-from alfred_brain.memory.extraction import Extractor, route_status, _parse_ops
+from alfred_brain.memory.extraction import EntityRef, Extractor, route_status, _parse_ops
 from alfred_brain.providers.base import TextChunk, TurnMessage
 from tests.test_memory_index import FakeEmbedder
 
@@ -95,3 +95,44 @@ async def test_extract_provider_error_returns_empty(tmp_path):
             yield  # pragma: no cover
     mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
     assert await Extractor(_Boom(), mem).extract(_batch()) == []
+
+
+def test_parse_ops_reads_title_and_entities():
+    raw = ('{"operations": [{"action": "add", "text": "Dimitris is 32.", '
+           '"title": "Dimitris age", "entities": [{"name": "Dimitris", "type": "person"}, '
+           '{"name": "Xland", "type": "bogus"}]}]}')
+    ops = _parse_ops(raw)
+    assert ops[0].title == "Dimitris age"
+    assert ops[0].entities[0] == EntityRef("Dimitris", "person")
+    assert ops[0].entities[1].type == "topic"   # invalid type coerced
+
+
+async def test_apply_creates_hubs_and_links(tmp_path):
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    prov = _FakeProvider(
+        '{"operations": [{"action": "add", "text": "Dimitris is 32 and in Greece.", '
+        '"title": "Dimitris age and location", "confidence": "high", "stakes": "low", '
+        '"entities": [{"name": "Dimitris", "type": "person"}, '
+        '{"name": "Greece", "type": "place"}]}]}')
+    applied = await Extractor(prov, mem).extract(_batch())
+    assert applied[0].title == "Dimitris age and location"
+    assert applied[0].links == ["Dimitris", "Greece"]
+    assert sorted(mem.list_entities()) == [("Dimitris", "person"), ("Greece", "place")]
+    assert applied[0].path.name == "Dimitris age and location.md"
+
+
+async def test_known_entities_passed_to_provider(tmp_path):
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    mem.ensure_entity("Dimitris", "person")
+
+    class _CaptureProvider:
+        name = "cap"
+        def __init__(self): self.system = None; self.user = None
+        async def run_turn(self, messages, tools, system):
+            self.system = system
+            self.user = messages[0].content
+            yield TextChunk('{"operations": []}', final=True)
+
+    prov = _CaptureProvider()
+    await Extractor(prov, mem).extract(_batch())
+    assert "Dimitris" in prov.user   # known entity surfaced to the model

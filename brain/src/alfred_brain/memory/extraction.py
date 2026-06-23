@@ -13,6 +13,15 @@ from .record import Memory, MemoryRecord
 logger = logging.getLogger(__name__)
 
 
+_ENTITY_TYPES = {"person", "place", "org", "project", "topic"}
+
+
+@dataclass
+class EntityRef:
+    name: str
+    type: str = "topic"
+
+
 @dataclass
 class ExtractOp:
     action: Literal["add", "update"]
@@ -22,6 +31,8 @@ class ExtractOp:
     tags: list[str] = field(default_factory=list)
     confidence: Literal["high", "low"] = "low"
     stakes: Literal["low", "high"] = "low"
+    title: str = ""
+    entities: list[EntityRef] = field(default_factory=list)
 
 
 def route_status(confidence: str, stakes: str) -> str:
@@ -34,19 +45,23 @@ EXTRACTION_SYSTEM = (
     "identity, lasting preferences, ongoing projects, important people, and how "
     "the user wants the assistant to behave. Ignore greetings, one-off requests, "
     "and ephemeral chatter.\n\n"
-    "You are given EXISTING memories (each with an id) and a TRANSCRIPT. For each "
-    "durable fact:\n"
+    "You are given KNOWN entities, EXISTING memories (each with an id), and a "
+    "TRANSCRIPT. For each durable fact:\n"
     "- If it refines or matches an existing memory, emit an \"update\" op with that "
-    "id instead of duplicating it.\n"
-    "- Otherwise emit an \"add\" op.\n"
+    "id instead of duplicating it; otherwise emit an \"add\" op.\n"
+    "- Give it a concise \"title\" (<= 6 words) that reads well as a note name.\n"
+    "- List the \"entities\" it concerns as {name, type} with type one of "
+    "person|place|org|project|topic. REUSE a KNOWN entity's exact name when it "
+    "refers to the same thing, so notes link to the same hub.\n"
     "- If the transcript confirms a tentative existing memory, \"update\" it with "
     "confidence \"high\".\n\n"
-    "Set \"confidence\" (high|low) by how certain the fact is, and \"stakes\" "
-    "(low|high) by how much acting on it wrongly would matter (security, money, "
-    "identity, irreversible actions are high).\n\n"
+    "Set \"confidence\" (high|low) by certainty, and \"stakes\" (low|high) by how "
+    "much acting on it wrongly would matter (security, money, identity, "
+    "irreversible actions are high).\n\n"
     "Respond with ONLY a JSON object, no prose:\n"
-    '{"operations": [{"action": "add", "text": "...", "type": "fact", '
-    '"tags": [], "confidence": "high", "stakes": "low"}]}\n'
+    '{"operations": [{"action": "add", "text": "...", "title": "...", '
+    '"type": "fact", "tags": [], "confidence": "high", "stakes": "low", '
+    '"entities": [{"name": "...", "type": "person"}]}]}\n'
     "Use an empty operations list when nothing durable is present."
 )
 
@@ -76,6 +91,15 @@ def _parse_ops(raw: str) -> list[ExtractOp]:
         body = str(o.get("text", "")).strip()
         if action not in ("add", "update") or not body:
             continue
+        entities: list[EntityRef] = []
+        for e in (o.get("entities") or []):
+            if not isinstance(e, dict):
+                continue
+            ename = str(e.get("name", "")).strip()
+            if not ename:
+                continue
+            etype = str(e.get("type", "topic"))
+            entities.append(EntityRef(ename, etype if etype in _ENTITY_TYPES else "topic"))
         ops.append(ExtractOp(
             action=action, text=body,
             id=(str(o["id"]) if o.get("id") else None),
@@ -83,6 +107,8 @@ def _parse_ops(raw: str) -> list[ExtractOp]:
             tags=[str(t) for t in (o.get("tags") or [])],
             confidence="high" if o.get("confidence") == "high" else "low",
             stakes="high" if o.get("stakes") == "high" else "low",
+            title=str(o.get("title", "")).strip(),
+            entities=entities,
         ))
     return ops
 
@@ -103,11 +129,15 @@ class Extractor:
     def set_recall_k(self, k: int) -> None:
         self._recall_k = k
 
-    async def _call(self, transcript: str, existing: list[MemoryRecord]) -> str:
+    async def _call(self, transcript: str, existing: list[MemoryRecord],
+                    known: list[tuple[str, str]]) -> str:
         existing_block = "\n".join(
             f"- [{r.id}] ({r.type}, {r.status}) {r.text}" for r in existing
         ) or "(none)"
-        user = f"EXISTING memories:\n{existing_block}\n\nTRANSCRIPT:\n{transcript}"
+        known_block = ", ".join(f"{n} ({t})" for n, t in known) or "(none)"
+        user = (f"KNOWN entities: {known_block}\n\n"
+                f"EXISTING memories:\n{existing_block}\n\n"
+                f"TRANSCRIPT:\n{transcript}")
         chunks: list[str] = []
         async for ev in self._provider.run_turn(
             [TurnMessage(role="user", content=user)], [], EXTRACTION_SYSTEM
@@ -124,11 +154,12 @@ class Extractor:
             logger.info("memory extraction: scanning %d-message batch", len(batch))
             try:
                 existing = self._memory.recall(transcript, k=self._recall_k)
-                raw = await self._call(transcript, existing)
+                known = self._memory.list_entities()
+                raw = await self._call(transcript, existing, known)
                 try:
                     ops = _parse_ops(raw)
                 except ValueError:
-                    raw = await self._call(transcript, existing)  # one retry
+                    raw = await self._call(transcript, existing, known)  # one retry
                     ops = _parse_ops(raw)
             except Exception:
                 logger.exception("memory extraction failed")
@@ -143,13 +174,17 @@ class Extractor:
         for op in ops:
             try:
                 status = route_status(op.confidence, op.stakes)
+                links = [self._memory.ensure_entity(e.name, e.type)
+                         for e in op.entities if e.name.strip()]
                 if op.action == "add":
                     applied.append(self._memory.remember(
-                        op.text, type=op.type, tags=op.tags, status=status))
+                        op.text, type=op.type, tags=op.tags, status=status,
+                        title=op.title, links=links))
                 elif op.action == "update" and op.id:
                     rec = self._memory.update(
                         op.id, text=op.text, type=op.type, tags=op.tags,
-                        status=status)
+                        status=status, title=(op.title or None),
+                        links=(links or None))
                     if rec is not None:
                         applied.append(rec)
             except Exception:
