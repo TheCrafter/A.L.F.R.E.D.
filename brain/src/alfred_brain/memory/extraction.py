@@ -5,7 +5,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Callable, Literal
 
 from ..providers.base import ReasoningProvider, TextChunk, TurnMessage
 from .record import Memory, MemoryRecord
@@ -117,10 +117,12 @@ class Extractor:
     """Runs an LLM extraction pass over aged-out messages and writes memories."""
 
     def __init__(self, provider: ReasoningProvider, memory: Memory,
-                 *, recall_k: int = 5) -> None:
+                 *, recall_k: int = 5,
+                 on_formed: Callable[[MemoryRecord, str], None] | None = None) -> None:
         self._provider = provider
         self._memory = memory
         self._recall_k = recall_k
+        self._on_formed = on_formed
         self._lock = asyncio.Lock()
 
     def set_provider(self, provider: ReasoningProvider) -> None:
@@ -177,9 +179,12 @@ class Extractor:
                 links = [self._memory.ensure_entity(e.name, e.type)
                          for e in op.entities if e.name.strip()]
                 if op.action == "add":
-                    applied.append(self._memory.remember(
+                    rec = self._memory.remember(
                         op.text, type=op.type, tags=op.tags, status=status,
-                        title=op.title, links=links))
+                        title=op.title, links=links)
+                    applied.append(rec)
+                    if self._on_formed is not None:
+                        self._on_formed(rec, "add")
                 elif op.action == "update" and op.id:
                     rec = self._memory.update(
                         op.id, text=op.text, type=op.type, tags=op.tags,
@@ -187,6 +192,8 @@ class Extractor:
                         links=(links or None))
                     if rec is not None:
                         applied.append(rec)
+                        if self._on_formed is not None:
+                            self._on_formed(rec, "update")
             except Exception:
                 logger.exception("applying extraction op failed: %s", op)
         return applied

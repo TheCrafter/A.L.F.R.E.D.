@@ -69,3 +69,13 @@ async def test_remember_tool_without_title_derives_one(tmp_path):
     rec = m.all()[0]
     assert rec.title == "one two three four five six seven eight"
     assert rec.links == []
+
+
+async def test_remember_tool_calls_on_formed(tmp_path):
+    from alfred_brain.memory import VaultMemory
+    from tests.test_memory_index import FakeEmbedder
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    seen = []
+    tool = RememberTool(mem, on_formed=lambda rec, op: seen.append(op))
+    await tool.run({"text": "a fact", "title": "Fact"})
+    assert seen == ["add"]

@@ -136,3 +136,14 @@ async def test_known_entities_passed_to_provider(tmp_path):
     prov = _CaptureProvider()
     await Extractor(prov, mem).extract(_batch())
     assert "Dimitris" in prov.user   # known entity surfaced to the model
+
+
+async def test_extract_calls_on_formed_per_applied_op(tmp_path):
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    seen = []
+    prov = _FakeProvider(
+        '{"operations": [{"action": "add", "text": "Dimitris is 32.", '
+        '"title": "Dimitris age", "confidence": "high", "stakes": "low", '
+        '"entities": [{"name": "Dimitris", "type": "person"}]}]}')
+    await Extractor(prov, mem, on_formed=lambda rec, op: seen.append((rec.title, op))).extract(_batch())
+    assert seen == [("Dimitris age", "add")]

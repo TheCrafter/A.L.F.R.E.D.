@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from alfred_protocol import RiskTier
 
 from .record import Memory
@@ -31,8 +33,10 @@ class RememberTool:
         "required": ["text"],
     }
 
-    def __init__(self, memory: Memory) -> None:
+    def __init__(self, memory: Memory,
+                 on_formed: Callable[[object, str], None] | None = None) -> None:
         self._memory = memory
+        self._on_formed = on_formed
 
     async def run(self, args: dict) -> str:
         text = str(args.get("text", "")).strip()
@@ -53,6 +57,8 @@ class RememberTool:
             title=str(args.get("title", "")).strip(),
             links=links,
         )
+        if self._on_formed is not None:
+            self._on_formed(rec, "add")
         return f"Remembered ({rec.type}) as {rec.id}."
 
 

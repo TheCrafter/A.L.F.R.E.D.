@@ -57,7 +57,12 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
     if memory is None:
         vault_dir = settings.memory_vault_dir or str(home() / "vault")
         memory = VaultMemory(vault_dir, FastEmbedEmbedder(settings.memory_embed_model))
-    registry.register(RememberTool(memory))
+    def _broadcast_formed(rec, op: str) -> None:
+        bus.publish(dump(MemoryFormed(
+            v=1, id=new_id(), ts=now_ts(), type="memory.formed",
+            item=memory_item(rec), op=op)))
+
+    registry.register(RememberTool(memory, on_formed=_broadcast_formed))
     registry.register(RecallTool(memory))
     registry.register(ForgetTool(memory))
 
@@ -73,7 +78,8 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
 
     working = WorkingMemory(window=settings.memory_window_messages)
     extractor = Extractor(_extraction_provider(settings, provider), memory,
-                          recall_k=settings.memory_extract_recall_k)
+                          recall_k=settings.memory_extract_recall_k,
+                          on_formed=_broadcast_formed)
     agent = AgentLoop(provider, registry, system_prompt(settings.persona_intensity),
                       settings.max_tool_iterations,
                       memory=memory, recall_top_k=settings.memory_recall_top_k,
