@@ -68,6 +68,27 @@ async def test_provider_error_is_logged(caplog):
     assert rec.exc_info and rec.exc_info[1].args == ("kaboom",)
 
 
+async def test_provider_error_emits_error_message_with_detail():
+    class _Boom:
+        name = "boom"
+        async def run_turn(self, messages, tools, system):
+            raise RuntimeError("kaboom")
+            yield  # pragma: no cover (makes this an async generator)
+
+    captured: list[dict] = []
+    loop = AgentLoop(_Boom(), _registry(), "sys")
+    await loop.run(corr="c-err", text="hi", publish=captured.append)
+
+    errors = [m for m in captured if m["type"] == "error"]
+    assert errors, "the real failure must be surfaced as an error message"
+    assert errors[0]["code"] == "internal"
+    assert errors[0]["corr"] == "c-err"
+    assert "kaboom" in errors[0]["message"]
+    # the error precedes the terminal turn_complete
+    assert captured[-1]["type"] == "agent.turn_complete"
+    assert captured[-1]["status"] == "error"
+
+
 async def test_cancellation_emits_killed():
     started = asyncio.Event()
 

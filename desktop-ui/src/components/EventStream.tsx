@@ -47,6 +47,11 @@ function TurnCard({
               {turn.message.text}
             </div>
           )}
+          {turn.error && (
+            <div className="mt-2 rounded border border-danger/40 bg-danger/10 px-2 py-1 pl-3 text-xs break-words text-danger">
+              ⚠ {turn.error.code}: {turn.error.message}
+            </div>
+          )}
         </div>
       )}
     </div>

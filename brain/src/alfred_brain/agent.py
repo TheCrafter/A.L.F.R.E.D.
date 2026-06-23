@@ -5,7 +5,7 @@ import logging
 from typing import Callable
 
 from alfred_protocol import (
-    AgentAction, AgentMessage, AgentThought, AgentTurnComplete,
+    AgentAction, AgentMessage, AgentThought, AgentTurnComplete, Error,
 )
 
 from .messages import dump, new_id, now_ts
@@ -93,8 +93,14 @@ class AgentLoop:
                 corr=corr, status="killed",
             ))
             raise
-        except Exception:
+        except Exception as exc:
             logger.exception("agent turn %s failed", corr)
+            # Surface the real failure (scoped to the turn) so the UI can show it
+            # alongside the persona apology, instead of an opaque dead end.
+            publish(dump(Error(
+                v=1, id=new_id(), ts=now_ts(), type="error",
+                corr=corr, code="internal", message=f"{type(exc).__name__}: {exc}"[:500],
+            )))
             emit(AgentMessage(
                 v=1, id=new_id(), ts=now_ts(), type="agent.message",
                 corr=corr, text="My apologies, sir — I was unable to complete that request.",

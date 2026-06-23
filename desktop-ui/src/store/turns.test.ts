@@ -45,6 +45,20 @@ describe("turn reducer", () => {
     expect(turns[0].endedAt).toBe("2026-06-23T00:00:00Z");
   });
 
+  it("attaches a turn-scoped error to its turn", () => {
+    let turns = start();
+    turns = applyMessage(turns, msg({ type: "error", corr: "c1", code: "internal", message: "groq: 503" }));
+    turns = applyMessage(turns, msg({ type: "agent.turn_complete", corr: "c1", status: "error" }));
+    expect(turns[0].error).toEqual({ code: "internal", message: "groq: 503" });
+    expect(turns[0].status).toBe("error");
+  });
+
+  it("ignores a connection-level error with no matching corr", () => {
+    const turns = start();
+    const next = applyMessage(turns, msg({ type: "error", code: "bad_message", message: "nope" }));
+    expect(next[0].error).toBeUndefined();
+  });
+
   it("ignores messages for unknown corr without throwing", () => {
     const turns = start();
     const next = applyMessage(turns, msg({ type: "agent.thought", corr: "nope", text: "x" }));

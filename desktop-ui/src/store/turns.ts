@@ -18,6 +18,8 @@ export interface Turn {
   // "interrupted" is a UI-local terminal status for turns orphaned by a
   // disconnect; the wire only carries completed | error | killed.
   status?: "completed" | "error" | "killed" | "interrupted";
+  // The real failure detail from a turn-scoped `error` message, if any.
+  error?: { code: string; message: string };
   startedAt: string;
   endedAt?: string;
 }
@@ -53,10 +55,12 @@ export function applyMessage(turns: Turn[], msg: Message): Turn[] {
     msg.type !== "agent.thought" &&
     msg.type !== "agent.action" &&
     msg.type !== "agent.message" &&
-    msg.type !== "agent.turn_complete"
+    msg.type !== "agent.turn_complete" &&
+    msg.type !== "error"
   ) {
     return turns;
   }
+  // A connection-level error may have no corr; then it matches no turn (no-op).
   const corr = msg.corr;
   return turns.map((t) => {
     if (t.corr !== corr) return t;
@@ -80,6 +84,8 @@ export function applyMessage(turns: Turn[], msg: Message): Turn[] {
         };
       case "agent.turn_complete":
         return { ...t, status: msg.status, endedAt: msg.ts };
+      case "error":
+        return { ...t, error: { code: msg.code, message: msg.message } };
       default:
         return t;
     }
