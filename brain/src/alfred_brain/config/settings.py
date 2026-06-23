@@ -39,3 +39,14 @@ class Settings(BaseSettings):
         default=5, ge=1, validation_alias="ALFRED_MAX_TOOL_ITERATIONS")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="INFO", validation_alias="ALFRED_LOG_LEVEL")
+
+    @classmethod
+    def settings_customise_sources(
+        cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
+    ):
+        from .paths import config_path
+        from .toml_source import FlatTomlSource
+
+        # highest priority first: init > env > .env > config.toml > field defaults
+        return (init_settings, env_settings, dotenv_settings,
+                FlatTomlSource(settings_cls, config_path()), file_secret_settings)
