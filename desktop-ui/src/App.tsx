@@ -3,6 +3,7 @@ import { EventStream } from "./components/EventStream";
 import { CommandInput } from "./components/CommandInput";
 import { StatusPanel } from "./components/StatusPanel";
 import { KillSwitch } from "./components/KillSwitch";
+import { WireInspector } from "./components/WireInspector";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         </div>
         <StatusPanel />
       </div>
+      <WireInspector />
       <div className="flex items-center justify-end border-t border-hud-dim/30 bg-panel/80 px-4 py-2">
         <KillSwitch />
       </div>
