@@ -121,6 +121,7 @@ class Extractor:
         if not transcript:
             return []
         async with self._lock:
+            logger.info("memory extraction: scanning %d-message batch", len(batch))
             try:
                 existing = self._memory.recall(transcript, k=self._recall_k)
                 raw = await self._call(transcript, existing)
@@ -132,7 +133,10 @@ class Extractor:
             except Exception:
                 logger.exception("memory extraction failed")
                 return []
-            return self._apply(ops)
+            applied = self._apply(ops)
+            logger.info("memory extraction: wrote %d memory(s) from %d op(s)",
+                        len(applied), len(ops))
+            return applied
 
     def _apply(self, ops: list[ExtractOp]) -> list[MemoryRecord]:
         applied: list[MemoryRecord] = []
