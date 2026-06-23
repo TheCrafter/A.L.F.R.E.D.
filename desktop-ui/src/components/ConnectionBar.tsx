@@ -27,7 +27,7 @@ export function ConnectionBar() {
       />
       <span className="text-lg font-bold tracking-[0.3em] text-hud">ALFRED</span>
       <input
-        className="w-72 rounded bg-void px-2 py-1 text-xs text-hud-dim outline-none"
+        className="w-72 rounded bg-void px-2 py-1 text-xs text-hud outline-none placeholder:text-hud-dim"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         disabled={connected}

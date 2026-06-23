@@ -4,7 +4,7 @@
   --color-void: #04070d;
   --color-panel: #0a121f;
   --color-hud: #38e1ff;
-  --color-hud-dim: #1a6c80;
+  --color-hud-dim: #5aa6bb;
   --color-amber: #ffb648;
   --color-danger: #ff5470;
   --color-safe: #5ef2a0;
@@ -16,6 +16,30 @@ body {
   background: var(--color-void);
   color: var(--color-hud);
   font-family: var(--font-mono);
+}
+
+/* On-brand scrollbars — thin, HUD-cyan thumb on a transparent track, replacing
+   the default OS scrollbar in the webview (WebView2/Chromium + Firefox). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-hud) 45%, transparent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-hud) 38%, transparent);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--color-hud) 65%, transparent);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 @layer utilities {
