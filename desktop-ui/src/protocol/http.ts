@@ -1,3 +1,5 @@
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+
 export function isTauri(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -15,13 +17,13 @@ export type HttpGet = (url: string) => Promise<HttpResponse>;
 
 // In Tauri, route through the HTTP plugin to bypass webview CORS; in a plain
 // browser, use the global fetch (same-origin path goes through the Vite proxy).
+// The plugin is imported statically (not via a runtime-gated dynamic import):
+// merely importing it has no side effects, and a static import lets Vite bundle
+// it with the main graph — avoiding the dev-server re-optimization race that a
+// conditional dynamic import triggers ("Failed to fetch dynamically imported
+// module"). It is only *called* inside the webview, where isTauri() is true.
 export async function defaultGet(url: string): Promise<HttpResponse> {
   if (isTauri()) {
-    // Lazily import the Tauri HTTP plugin so it is only loaded inside the
-    // webview (never in browser dev or tests). The package is a real dependency
-    // (installed in Task 12), so Vite resolves and bundles this async chunk;
-    // at runtime in Tauri the dynamic import resolves to that bundled chunk.
-    const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
     const res = await tauriFetch(url, { method: "GET" });
     return { ok: res.ok, status: res.status, json: () => res.json() };
   }
