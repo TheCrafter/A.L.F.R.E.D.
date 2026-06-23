@@ -32,3 +32,12 @@ ALFRED_MOCK_WS=ws://127.0.0.1:8765/ws pnpm exec vitest run src/protocol/integrat
 Types come from `@alfred/protocol` and the schema from `@alfred/protocol-schema`
 (aliases into the frozen `../protocol/`). Never redefine a message shape; a needed
 new message is a coordinated `protocol/` change, not a local invention.
+
+## Known limitations
+
+- A turn left in-flight when the connection drops or reconnects is not auto-finalized
+  in the timeline (it stays open without a terminal status); it will resolve on the
+  next successful turn. Finalizing stale turns on disconnect is a planned follow-up.
+- The kill switch sends `kill_switch.activate` and the resulting `kill_switch.ack` is
+  visible in the Wire inspector, but open turns are not yet marked `killed` in the
+  event stream. Tying the ack to turn state is a planned follow-up.

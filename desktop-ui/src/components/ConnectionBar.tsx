@@ -11,7 +11,13 @@ const DOT: Record<string, string> = {
 };
 
 export function ConnectionBar() {
-  const { phase, url, server, setUrl, connect, disconnect, lastError } = useStore();
+  const phase = useStore((s) => s.phase);
+  const url = useStore((s) => s.url);
+  const server = useStore((s) => s.server);
+  const setUrl = useStore((s) => s.setUrl);
+  const connect = useStore((s) => s.connect);
+  const disconnect = useStore((s) => s.disconnect);
+  const lastError = useStore((s) => s.lastError);
   const connected = phase === "ready";
 
   return (

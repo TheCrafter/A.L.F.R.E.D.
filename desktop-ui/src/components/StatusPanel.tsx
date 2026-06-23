@@ -2,7 +2,10 @@ import { useEffect } from "react";
 import { useStore } from "../store/store";
 
 export function StatusPanel() {
-  const { status, statusError, refreshStatus, phase } = useStore();
+  const status = useStore((s) => s.status);
+  const statusError = useStore((s) => s.statusError);
+  const refreshStatus = useStore((s) => s.refreshStatus);
+  const phase = useStore((s) => s.phase);
 
   useEffect(() => {
     if (phase !== "ready") return;
