@@ -25,6 +25,9 @@ SECTION_MAP: dict[tuple[str, str], str] = {
     ("memory", "vault_dir"): "memory_vault_dir",
     ("memory", "embed_model"): "memory_embed_model",
     ("memory", "recall_top_k"): "memory_recall_top_k",
+    ("memory", "window_messages"): "memory_window_messages",
+    ("memory", "extract_model"): "memory_extract_model",
+    ("memory", "extract_recall_k"): "memory_extract_recall_k",
 }
 
 

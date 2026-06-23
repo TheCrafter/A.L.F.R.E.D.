@@ -33,3 +33,31 @@ def test_template_documents_memory_section():
     assert "[memory]" in body
     assert "recall_top_k" in body
     assert "embed_model" in body
+
+
+def test_formation_defaults(monkeypatch):
+    for v in ("ALFRED_WINDOW_MESSAGES", "ALFRED_EXTRACT_MODEL", "ALFRED_EXTRACT_RECALL_K"):
+        monkeypatch.delenv(v, raising=False)
+    from alfred_brain.config import Settings
+    s = Settings(_env_file=None)
+    assert s.memory_window_messages == 20
+    assert s.memory_extract_model == ""
+    assert s.memory_extract_recall_k == 5
+
+
+def test_formation_from_env(monkeypatch):
+    monkeypatch.setenv("ALFRED_WINDOW_MESSAGES", "8")
+    monkeypatch.setenv("ALFRED_EXTRACT_RECALL_K", "3")
+    from alfred_brain.config import Settings
+    s = Settings(_env_file=None)
+    assert s.memory_window_messages == 8
+    assert s.memory_extract_recall_k == 3
+
+
+def test_formation_from_toml(tmp_path, monkeypatch):
+    from alfred_brain.config.toml_source import read_flat_toml
+    p = tmp_path / "config.toml"
+    p.write_text("[memory]\nwindow_messages = 12\nextract_recall_k = 2\n", encoding="utf-8")
+    flat = read_flat_toml(p)
+    assert flat["memory_window_messages"] == 12
+    assert flat["memory_extract_recall_k"] == 2

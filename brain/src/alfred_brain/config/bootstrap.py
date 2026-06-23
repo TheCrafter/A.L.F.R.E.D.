@@ -42,6 +42,9 @@ level = "{g("ALFRED_LOG_LEVEL", "INFO")}"   # DEBUG | INFO | WARNING | ERROR | C
 # vault_dir = ""   # [*] default: $ALFRED_HOME/vault  (an Obsidian-compatible vault)
 embed_model = "{g("ALFRED_EMBED_MODEL", "BAAI/bge-small-en-v1.5")}"   # [*] local CPU embedding model
 recall_top_k = {g("ALFRED_RECALL_TOP_K", "5")}   # integer >= 1   (hot-reloadable)
+window_messages = {g("ALFRED_WINDOW_MESSAGES", "20")}   # short-term: last N user/assistant messages   (hot-reloadable)
+# extract_model = ""   # [*] model for the extraction pass; empty = use the active provider's model
+extract_recall_k = {g("ALFRED_EXTRACT_RECALL_K", "5")}   # memories shown to the extractor for dedup   (hot-reloadable)
 """
 
 

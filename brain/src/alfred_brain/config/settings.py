@@ -20,6 +20,9 @@ ENV_ALIASES = {
     "memory_vault_dir": "ALFRED_VAULT_DIR",
     "memory_embed_model": "ALFRED_EMBED_MODEL",
     "memory_recall_top_k": "ALFRED_RECALL_TOP_K",
+    "memory_window_messages": "ALFRED_WINDOW_MESSAGES",
+    "memory_extract_model": "ALFRED_EXTRACT_MODEL",
+    "memory_extract_recall_k": "ALFRED_EXTRACT_RECALL_K",
 }
 
 
@@ -47,6 +50,11 @@ class Settings(BaseSettings):
         default="BAAI/bge-small-en-v1.5", validation_alias="ALFRED_EMBED_MODEL")
     memory_recall_top_k: int = Field(
         default=5, ge=1, validation_alias="ALFRED_RECALL_TOP_K")
+    memory_window_messages: int = Field(
+        default=20, ge=2, validation_alias="ALFRED_WINDOW_MESSAGES")
+    memory_extract_model: str = Field(default="", validation_alias="ALFRED_EXTRACT_MODEL")
+    memory_extract_recall_k: int = Field(
+        default=5, ge=1, validation_alias="ALFRED_EXTRACT_RECALL_K")
 
     @classmethod
     def settings_customise_sources(
