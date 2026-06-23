@@ -23,3 +23,26 @@ def test_memory_tools_registered_and_reload_applies_top_k(tmp_path, monkeypatch)
         "[memory]\nrecall_top_k = 3\n", encoding="utf-8")
     TestClient(app).post("/config/reload")
     assert app.state.agent._recall_top_k == 3
+
+
+def test_app_wires_working_memory_and_extractor():
+    app = create_app(Settings(_env_file=None))
+    agent = app.state.agent
+    assert agent._working is not None
+    assert agent._extractor is not None
+
+
+def test_shutdown_flushes_working_memory(monkeypatch):
+    app = create_app(Settings(_env_file=None))
+    agent = app.state.agent
+    drained = {"called": False}
+
+    async def fake_extract(batch):
+        drained["called"] = True
+        return []
+
+    agent._extractor.extract = fake_extract  # type: ignore[method-assign]
+    agent._working.append("user", "leftover fact")
+    with TestClient(app):
+        pass  # entering+exiting triggers startup/shutdown
+    assert drained["called"] is True

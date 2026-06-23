@@ -18,8 +18,10 @@ from .agent import AgentLoop
 from .config import Settings, effective_config, home
 from .events import EventBus
 from .memory import Memory, VaultMemory
+from .memory.extraction import Extractor
 from .memory.index import FastEmbedEmbedder
 from .memory.tools import ForgetTool, RecallTool, RememberTool
+from .memory.working import WorkingMemory
 from .messages import dump, new_id, now_ts
 from .persona import system_prompt
 from .providers.base import ReasoningProvider
@@ -48,9 +50,24 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
     registry.register(RememberTool(memory))
     registry.register(RecallTool(memory))
     registry.register(ForgetTool(memory))
+
+    def _extraction_provider(s: Settings, active: ReasoningProvider) -> ReasoningProvider:
+        if not s.memory_extract_model:
+            return active
+        try:
+            return build_explicit(s, s.provider, s.memory_extract_model)
+        except ValueError:
+            logging.getLogger("alfred_brain").warning(
+                "extract_model set but provider unavailable; using active provider")
+            return active
+
+    working = WorkingMemory(window=settings.memory_window_messages)
+    extractor = Extractor(_extraction_provider(settings, provider), memory,
+                          recall_k=settings.memory_extract_recall_k)
     agent = AgentLoop(provider, registry, system_prompt(settings.persona_intensity),
                       settings.max_tool_iterations,
-                      memory=memory, recall_top_k=settings.memory_recall_top_k)
+                      memory=memory, recall_top_k=settings.memory_recall_top_k,
+                      working=working, extractor=extractor)
     turns = TurnManager()
     started = datetime.now(timezone.utc)
 
@@ -83,6 +100,8 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
         if any(getattr(old, f) != getattr(new, f) for f in HOT_PROVIDER_FIELDS):
             new_provider = build_provider(new)
             agent.set_provider(new_provider)
+            if not new.memory_extract_model:
+                extractor.set_provider(new_provider)
             current["provider"] = new_provider.name
             # Derive the model from the RELOADED settings (not _model_for, which
             # reads the captured startup `settings`).
@@ -101,6 +120,12 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
         if old.memory_recall_top_k != new.memory_recall_top_k:
             agent.set_recall_top_k(new.memory_recall_top_k)
             changed.append("memory_recall_top_k")
+        if old.memory_window_messages != new.memory_window_messages:
+            working.set_window(new.memory_window_messages)
+            changed.append("memory_window_messages")
+        if old.memory_extract_recall_k != new.memory_extract_recall_k:
+            extractor.set_recall_k(new.memory_extract_recall_k)
+            changed.append("memory_extract_recall_k")
         if old.log_level != new.log_level:
             logging.getLogger("alfred_brain").setLevel(new.log_level)
             changed.append("log_level")
@@ -129,6 +154,8 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
         agent.set_provider(new_provider)
+        if not state["settings"].memory_extract_model:
+            extractor.set_provider(new_provider)
         current["provider"] = new_provider.name
         current["model"] = "scripted" if new_provider.name == "scripted" else sel.model
         return {"current": current, "available": available_models(state["settings"])}
@@ -237,5 +264,9 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
                     t.cancel()
             bus.unsubscribe(q)
             sender_task.cancel()
+
+    @app.on_event("shutdown")
+    async def _flush_memory() -> None:
+        await extractor.extract(working.drain())
 
     return app
