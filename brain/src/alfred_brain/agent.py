@@ -40,6 +40,12 @@ class AgentLoop:
         """Swap the reasoning provider at runtime (used by the model picker)."""
         self._provider = provider
 
+    def set_system(self, system: str) -> None:
+        self._system = system
+
+    def set_max_iterations(self, n: int) -> None:
+        self._max_iterations = n
+
     async def run(self, *, corr: str, text: str, publish: Callable[[dict], None]) -> None:
         def emit(model: AgentThought | AgentMessage | AgentAction | AgentTurnComplete) -> None:
             publish(dump(model))

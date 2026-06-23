@@ -14,7 +14,7 @@ from alfred_protocol import (
 
 from . import SERVER_NAME, SERVER_VERSION
 from .agent import AgentLoop
-from .config import Settings
+from .config import Settings, effective_config
 from .events import EventBus
 from .messages import dump, new_id, now_ts
 from .persona import system_prompt
@@ -46,6 +46,8 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
     app.state.turns = turns
     app.state.agent = agent
 
+    state = {"settings": settings}
+
     def _model_for(p: ReasoningProvider) -> str:
         if p.name == "gemini":
             return settings.gemini_model
@@ -55,6 +57,10 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
 
     # Mutable record of the live provider+model, swappable at runtime via /models.
     current = {"provider": provider.name, "model": _model_for(provider)}
+
+    @app.get("/config")
+    def get_config() -> dict:
+        return {"config": effective_config(state["settings"])}
 
     @app.get("/models")
     def models() -> dict:

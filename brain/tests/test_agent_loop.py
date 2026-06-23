@@ -108,3 +108,12 @@ async def test_cancellation_emits_killed():
         await task
     assert captured[-1]["type"] == "agent.turn_complete"
     assert captured[-1]["status"] == "killed"
+
+
+def test_agent_setters_mutate_config():
+    from alfred_brain.providers.scripted import ScriptedProvider
+    loop = AgentLoop(ScriptedProvider(), _registry(), "old", max_iterations=5)
+    loop.set_system("new system")
+    loop.set_max_iterations(2)
+    assert loop._system == "new system"
+    assert loop._max_iterations == 2
