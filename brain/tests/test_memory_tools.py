@@ -34,6 +34,13 @@ async def test_forget_tool_deletes(tmp_path):
     assert "forg" in out.lower() or rec.id in out
 
 
+async def test_remember_tool_requires_text(tmp_path):
+    m = _mem(tmp_path)
+    out = await RememberTool(m).run({"text": "   "})
+    assert "required" in out.lower()
+    assert m.all() == []
+
+
 async def test_tools_conform_and_carry_risk(tmp_path):
     m = _mem(tmp_path)
     for tool, risk_name in [(RememberTool(m), "sensitive"),

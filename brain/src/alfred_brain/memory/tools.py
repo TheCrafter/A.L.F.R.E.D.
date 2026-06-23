@@ -28,8 +28,11 @@ class RememberTool:
         self._memory = memory
 
     async def run(self, args: dict) -> str:
+        text = str(args.get("text", "")).strip()
+        if not text:
+            return "Error: text is required."
         rec = self._memory.remember(
-            str(args.get("text", "")),
+            text,
             type=str(args.get("type", "note")),
             tags=list(args.get("tags") or []),
         )

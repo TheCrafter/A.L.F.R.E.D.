@@ -41,4 +41,6 @@ def test_zero_vector_query_is_safe():
     idx = VectorIndex(FakeEmbedder())
     idx.add("a", "alpha")
     # query has no vocab words -> zero vector -> no crash, score 0
-    assert idx.search("zzz", k=5)[0][0] == "a"
+    hits = idx.search("zzz", k=5)
+    assert hits[0][0] == "a"
+    assert hits[0][1] == 0.0
