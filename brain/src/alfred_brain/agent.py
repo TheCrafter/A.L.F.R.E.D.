@@ -19,6 +19,18 @@ from .tools.registry import ToolRegistry
 logger = logging.getLogger(__name__)
 
 
+MEMORY_GUIDANCE = (
+    "# Memory\n"
+    "You have a persistent memory. Proactively call the `remember` tool — without "
+    "being asked — whenever the user reveals a durable fact worth keeping: their name "
+    "or identity, lasting preferences, ongoing projects, important people, or how they "
+    'want you to behave. Do not wait for the words "remember that"; if the user states '
+    "such a fact in passing, store it. Do NOT store trivial or one-off chatter. Write "
+    "each memory as a short, clear, self-contained statement, and use at most one broad "
+    "tag (e.g. personal, work, preference) or none. Avoid storing duplicates."
+)
+
+
 def _summary(req: ToolCallRequest) -> str:
     args = ", ".join(f"{k}={v!r}" for k, v in req.args.items())
     return f"{req.tool}({args})"
@@ -61,11 +73,10 @@ class AgentLoop:
         messages: list[TurnMessage] = [TurnMessage(role="user", content=text)]
         system = self._system
         if self._memory is not None:
-            block = ("# Memory\nYou have a persistent memory; use the remember "
-                     "tool to store durable facts the user shares.")
+            block = MEMORY_GUIDANCE
             hits = self._memory.recall(text, k=self._recall_top_k)
             if hits:
-                block += "\nRelevant memories:\n" + "\n".join(
+                block += "\n\nRelevant memories:\n" + "\n".join(
                     f"- ({h.type}) {h.text}" for h in hits)
             system = f"{self._system}\n\n{block}"
         try:
