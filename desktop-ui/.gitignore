@@ -4,3 +4,6 @@ dist-ssr/
 *.local
 .DS_Store
 src-tauri/target/
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo
