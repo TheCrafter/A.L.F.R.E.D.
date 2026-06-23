@@ -32,6 +32,57 @@ def _tool_call(call_id, name, arguments):
     )
 
 
+class _FlakyCompletions:
+    """Raises `exc` for the first `fails` calls, then returns `message`."""
+
+    def __init__(self, message, fails, exc):
+        self._message = message
+        self._fails = fails
+        self._exc = exc
+        self.call_count = 0
+
+    async def create(self, **kwargs):
+        self.call_count += 1
+        if self.call_count <= self._fails:
+            raise self._exc
+        return SimpleNamespace(choices=[SimpleNamespace(message=self._message)])
+
+
+class _FlakyClient:
+    def __init__(self, message, fails, exc):
+        self.completions = _FlakyCompletions(message, fails, exc)
+        self.chat = SimpleNamespace(completions=self.completions)
+
+
+async def test_retries_on_tool_use_failed():
+    msg = SimpleNamespace(content=None, tool_calls=[_tool_call("c1", "echo", '{"text": "hi"}')])
+    err = Exception("Error code: 400 - {'error': {'code': 'tool_use_failed'}}")
+    client = _FlakyClient(msg, fails=2, exc=err)  # fail twice, succeed on 3rd
+    p = GroqProvider("k", "m", client=client)
+    events = [ev async for ev in p.run_turn([TurnMessage(role="user", content="hi")], [], "sys")]
+    reqs = [e for e in events if isinstance(e, ToolCallRequest)]
+    assert reqs and reqs[0].tool == "echo"
+    assert client.completions.call_count == 3  # retried twice, then succeeded
+
+
+async def test_does_not_retry_other_errors():
+    err = Exception("Error code: 500 - internal server error")
+    client = _FlakyClient(SimpleNamespace(content="x", tool_calls=None), fails=99, exc=err)
+    p = GroqProvider("k", "m", client=client)
+    with pytest.raises(Exception, match="internal server error"):
+        [ev async for ev in p.run_turn([TurnMessage(role="user", content="hi")], [], "sys")]
+    assert client.completions.call_count == 1  # not retried
+
+
+async def test_gives_up_after_max_retries():
+    err = Exception("tool_use_failed")
+    client = _FlakyClient(SimpleNamespace(content="x", tool_calls=None), fails=99, exc=err)
+    p = GroqProvider("k", "m", client=client)
+    with pytest.raises(Exception, match="tool_use_failed"):
+        [ev async for ev in p.run_turn([TurnMessage(role="user", content="hi")], [], "sys")]
+    assert client.completions.call_count == 5  # bounded
+
+
 async def test_text_response_yields_thought_then_final_chunk():
     msg = SimpleNamespace(content="Naturally, sir.", tool_calls=None)
     p = GroqProvider("k", "m", client=_FakeClient(msg))

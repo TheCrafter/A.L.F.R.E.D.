@@ -55,12 +55,28 @@ class GroqProvider:
         self._client = client or AsyncGroq(api_key=api_key)
         self._model = model
 
+    async def _create(self, **kwargs):
+        # Groq's Llama models intermittently emit a malformed <function=...> tool
+        # call that the API rejects with HTTP 400 `tool_use_failed`. Retrying
+        # re-runs the generation, which almost always yields a valid structured
+        # call. Only this specific error is retried; anything else propagates.
+        # (asyncio.CancelledError subclasses BaseException, so the kill switch
+        # is never swallowed here.)
+        attempts = 5
+        for i in range(attempts):
+            try:
+                return await self._client.chat.completions.create(**kwargs)
+            except Exception as exc:
+                if "tool_use_failed" in str(exc) and i < attempts - 1:
+                    continue
+                raise
+
     async def run_turn(
         self, messages: list[TurnMessage], tools: list[ToolSpec], system: str
     ) -> AsyncIterator[ProviderEvent]:
         yield Thought("One moment, sir.")
         tool_defs = _to_tools(tools)
-        resp = await self._client.chat.completions.create(
+        resp = await self._create(
             model=self._model,
             messages=_to_messages(system, messages),
             **({"tools": tool_defs, "tool_choice": "auto"} if tool_defs else {}),

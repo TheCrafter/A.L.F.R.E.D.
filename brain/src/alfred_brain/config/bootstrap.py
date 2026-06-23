@@ -25,7 +25,7 @@ port = {g("ALFRED_PORT", "8766")}          # [*] 1-65535
 [reasoning]
 provider = "{g("ALFRED_PROVIDER", "gemini")}"                  # groq | gemini | scripted   (hot-reloadable)
 groq_api_key = "{g("GROQ_API_KEY", "")}"            # from https://console.groq.com/keys
-groq_model = "{g("GROQ_MODEL", "llama-3.3-70b-versatile")}"   # {groq_models}
+groq_model = "{g("GROQ_MODEL", "openai/gpt-oss-20b")}"   # {groq_models}
 gemini_api_key = "{g("GEMINI_API_KEY", "")}"        # from https://aistudio.google.com/apikey
 gemini_model = "{g("GEMINI_MODEL", "gemini-2.5-flash")}"   # {gemini_models}   (free tier)
 

@@ -11,7 +11,15 @@ log = logging.getLogger(__name__)
 # Curated, switchable model catalog per provider (for the UI model picker).
 # Free-tier Gemini models only (2.5-pro is paid → excluded).
 GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
-GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+# Ordered best-first for tool-calling reliability. gpt-oss-* / llama-4 emit
+# structured tool calls cleanly; llama-3.3-70b intermittently malforms them
+# (mitigated by the provider's tool_use_failed retry) but is kept selectable.
+GROQ_MODELS = [
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "llama-3.3-70b-versatile",
+]
 
 
 def available_models(settings: Settings) -> list[dict[str, str]]:
