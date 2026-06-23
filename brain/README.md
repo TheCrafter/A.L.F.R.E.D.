@@ -2,7 +2,7 @@
 
 The real headless brain: a FastAPI WebSocket + HTTP server speaking the frozen
 `protocol/` contract, with an event bus, a swappable reasoning provider
-(Gemini + deterministic Scripted), a tool-calling agent loop, a global kill
+(Gemini, Groq, + deterministic Scripted), a tool-calling agent loop, a global kill
 switch, and the ALFRED persona.
 
 ## Run
@@ -26,9 +26,11 @@ always boots.
 
 | Var | Default | Purpose |
 |-----|---------|---------|
-| `ALFRED_PROVIDER` | `gemini` | `gemini` \| `scripted` (`groq`/`ollama` reserved) |
+| `ALFRED_PROVIDER` | `gemini` | `gemini` \| `groq` \| `scripted` (`ollama` reserved) |
 | `GEMINI_API_KEY` | — | Google AI Studio free key |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | model id |
+| `GROQ_API_KEY` | — | Groq free key (console.groq.com) |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | model id |
 | `ALFRED_HOST` | `127.0.0.1` | bind host |
 | `ALFRED_PORT` | `8766` | bind port |
 | `ALFRED_PERSONA_INTENSITY` | `full` | `off` \| `light` \| `full` |

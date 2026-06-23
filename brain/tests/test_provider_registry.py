@@ -23,9 +23,20 @@ def test_gemini_with_key_builds_gemini():
     assert isinstance(p, GeminiProvider)
 
 
+def test_groq_without_key_falls_back_to_scripted():
+    p = build_provider(Settings(provider="groq", groq_api_key=None, _env_file=None))
+    assert isinstance(p, ScriptedProvider)
+
+
+def test_groq_with_key_builds_groq():
+    from alfred_brain.providers.groq import GroqProvider
+    p = build_provider(Settings(provider="groq", groq_api_key="x", _env_file=None))
+    assert isinstance(p, GroqProvider)
+
+
 def test_unknown_provider_falls_back():
-    p = build_provider(Settings(provider="groq", _env_file=None))
-    assert isinstance(p, ScriptedProvider)  # groq not implemented in Phase 1
+    p = build_provider(Settings(provider="totally-unknown", _env_file=None))
+    assert isinstance(p, ScriptedProvider)
 
 
 @pytest.mark.integration

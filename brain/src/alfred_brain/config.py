@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     provider: str = Field(default="gemini", validation_alias="ALFRED_PROVIDER")
     gemini_api_key: str | None = Field(default=None, validation_alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
+    groq_api_key: str | None = Field(default=None, validation_alias="GROQ_API_KEY")
+    groq_model: str = Field(default="llama-3.3-70b-versatile", validation_alias="GROQ_MODEL")
     host: str = Field(default="127.0.0.1", validation_alias="ALFRED_HOST")
     port: int = Field(default=8766, validation_alias="ALFRED_PORT")
     persona_intensity: str = Field(default="full", validation_alias="ALFRED_PERSONA_INTENSITY")

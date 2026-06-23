@@ -19,5 +19,11 @@ def build_provider(settings: Settings) -> ReasoningProvider:
             return ScriptedProvider()
         from .gemini import GeminiProvider
         return GeminiProvider(settings.gemini_api_key, settings.gemini_model)
-    log.warning("Provider %r not implemented in Phase 1; using scripted.", name)
+    if name == "groq":
+        if not settings.groq_api_key:
+            log.warning("GROQ_API_KEY not set; falling back to scripted provider.")
+            return ScriptedProvider()
+        from .groq import GroqProvider
+        return GroqProvider(settings.groq_api_key, settings.groq_model)
+    log.warning("Provider %r not implemented; using scripted.", name)
     return ScriptedProvider()
