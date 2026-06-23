@@ -35,15 +35,18 @@ function TurnCard({ turn }: { turn: Turn }) {
 
 export function EventStream() {
   const turns = useStore((s) => s.turns);
+  // The core carries the idle/current line, so the log shows nothing until
+  // there's history — then it's a bounded, scrollable strip beneath the core.
+  if (turns.length === 0) return null;
   return (
-    <main className="flex-1 space-y-3 overflow-y-auto p-4">
-      {turns.length === 0 ? (
-        <p className="text-sm text-hud-dim">
-          Awaiting instruction. I do hope it&apos;s worth my processing cycles.
-        </p>
-      ) : (
-        turns.map((t) => <TurnCard key={t.corr} turn={t} />)
-      )}
-    </main>
+    <section
+      aria-label="Event log"
+      className="mx-auto w-full max-w-3xl shrink-0 space-y-3 overflow-y-auto border-t border-hud-dim/20 px-4 py-4"
+      style={{ maxHeight: "32vh" }}
+    >
+      {turns.map((t) => (
+        <TurnCard key={t.corr} turn={t} />
+      ))}
+    </section>
   );
 }

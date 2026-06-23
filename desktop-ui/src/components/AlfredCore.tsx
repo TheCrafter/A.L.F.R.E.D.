@@ -82,7 +82,7 @@ export function AlfredCore() {
             : IDLE_LINE;
 
   return (
-    <section className="alfred-core flex shrink-0 flex-col items-center gap-3 px-4 pt-5 pb-3" data-state={state}>
+    <section className="alfred-core flex flex-1 flex-col items-center justify-center gap-6 px-4 py-6" data-state={state}>
       <div className="core-stage">
         <div className="core-halo" />
         <svg className="core-svg" viewBox="0 0 300 300" role="img" aria-label={`ALFRED ${LABEL[state]}`}>
@@ -137,12 +137,12 @@ export function AlfredCore() {
         </svg>
       </div>
 
-      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.45em]" style={{ color: "var(--core)" }}>
+      <div className="flex items-center gap-2.5 text-xs uppercase tracking-[0.5em]" style={{ color: "var(--core)" }}>
         <span className="text-hud-dim">ALFRED</span>
         <span>{LABEL[state]}</span>
       </div>
 
-      <p className="max-w-[60ch] text-center text-sm leading-relaxed text-hud [text-wrap:balance]">
+      <p className="max-w-[54ch] text-center text-base leading-relaxed text-hud [text-wrap:balance]">
         {voice}
         {state === "speaking" && <span className="ml-0.5 animate-pulse text-hud">▍</span>}
       </p>

@@ -18,6 +18,8 @@ export default function App() {
             <EventStream />
             <CommandInput />
           </div>
+          {/* AlfredCore is flex-1 and vertically centers the reactor; the event
+              log sits as a bounded strip beneath it (see EventStream max-height). */}
           <StatusPanel />
         </div>
         <WireInspector />

@@ -54,7 +54,7 @@ body {
 .alfred-core[data-state="speaking"] { --core: var(--color-hud);     --spin: 17s; --pulse: 1.1s; }
 .alfred-core[data-state="error"]    { --core: var(--color-danger);  --spin: 44s; --pulse: 3s; }
 
-.core-stage { position: relative; aspect-ratio: 1; width: clamp(176px, 30vh, 300px); }
+.core-stage { position: relative; aspect-ratio: 1; width: clamp(300px, 56vh, 620px); }
 /* color drives every `currentColor` stroke/stop in the SVG, so state colour
    flows through one custom property instead of unresolved var() attributes. */
 .core-svg { width: 100%; height: 100%; overflow: visible; display: block; color: var(--core); }
