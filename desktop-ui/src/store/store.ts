@@ -42,7 +42,7 @@ export function createStore(
 
   return create<AppState>((set, get) => ({
     phase: "idle",
-    url: "ws://127.0.0.1:8766/ws",
+    url: "ws://127.0.0.1:8767/ws",
     turns: [],
     wire: [],
 

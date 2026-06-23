@@ -16,6 +16,7 @@
         "title": "ALFRED",
         "width": 1100,
         "height": 720,
+        "maximized": true,
         "resizable": true,
         "theme": "Dark"
       }
