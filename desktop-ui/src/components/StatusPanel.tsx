@@ -17,7 +17,7 @@ export function StatusPanel() {
   return (
     <aside className="w-64 space-y-2 border-l border-hud-dim/30 bg-panel/50 p-4 text-xs">
       <h2 className="text-[10px] uppercase tracking-[0.3em] text-hud-dim">Status</h2>
-      {statusError && <p className="text-danger">{statusError}</p>}
+      {statusError && <p className="break-all text-danger">{statusError}</p>}
       {status ? (
         <dl className="space-y-1 text-hud-dim">
           <Row k="uptime" v={`${status.uptime_seconds.toFixed(0)}s`} />

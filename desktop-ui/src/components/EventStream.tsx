@@ -18,14 +18,14 @@ function TurnCard({ turn }: { turn: Turn }) {
         </div>
       ))}
       {turn.actions.map((a, i) => (
-        <div key={`ac-${i}`} className="flex items-center gap-2 pl-4 text-xs text-hud">
+        <div key={`ac-${i}`} className="flex items-start gap-2 pl-4 text-xs text-hud">
           <RiskBadge risk={a.risk} />
-          <span className="text-hud-dim">{a.tool}</span>
-          <span>{a.summary}</span>
+          <span className="shrink-0 text-hud-dim">{a.tool}</span>
+          <span className="min-w-0 break-words">{a.summary}</span>
         </div>
       ))}
       {turn.message.text && (
-        <div className="mt-2 pl-4 text-sm text-hud [text-shadow:0_0_8px_var(--color-hud)]">
+        <div className="mt-2 pl-4 text-sm whitespace-pre-wrap break-words text-hud [text-shadow:0_0_8px_var(--color-hud)]">
           {turn.message.text}
         </div>
       )}

@@ -82,7 +82,7 @@ export function AlfredCore() {
             : IDLE_LINE;
 
   return (
-    <section className="alfred-core flex flex-1 flex-col items-center justify-center gap-6 px-4 py-6" data-state={state}>
+    <section className="alfred-core flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-6 overflow-hidden px-4 py-6" data-state={state}>
       <div className="core-stage">
         <div className="core-halo" />
         <svg className="core-svg" viewBox="0 0 300 300" role="img" aria-label={`ALFRED ${LABEL[state]}`}>
@@ -142,7 +142,9 @@ export function AlfredCore() {
         <span>{LABEL[state]}</span>
       </div>
 
-      <p className="max-w-[54ch] text-center text-base leading-relaxed text-hud [text-wrap:balance]">
+      {/* Glanceable caption only — the full reply lives in the event log below,
+          so clamp it and never let a long reply blow out the reactor. */}
+      <p className="line-clamp-4 max-w-[54ch] overflow-hidden text-center text-base leading-relaxed break-words text-hud">
         {voice}
         {state === "speaking" && <span className="ml-0.5 animate-pulse text-hud">▍</span>}
       </p>

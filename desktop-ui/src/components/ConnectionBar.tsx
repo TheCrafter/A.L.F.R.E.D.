@@ -38,8 +38,10 @@ export function ConnectionBar() {
       >
         {connected ? "Disconnect" : "Connect"}
       </button>
-      <span className="ml-auto text-xs text-hud-dim">
-        {server ? `${server.serverName} v${server.serverVersion} · ${server.sessionId}` : phase}
+      <span className="ml-auto min-w-0 truncate text-xs text-hud-dim">
+        {phase === "ready" && server
+          ? `${server.serverName} v${server.serverVersion} · ${server.sessionId}`
+          : phase}
         {lastError ? ` · ${lastError}` : ""}
       </span>
     </header>
