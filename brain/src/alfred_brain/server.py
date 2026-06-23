@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from alfred_protocol import (
     CommandAck, Error, KillSwitchAck, ServerHello, StatusResponse,
@@ -62,20 +63,61 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
     def get_config() -> dict:
         return {"config": effective_config(state["settings"])}
 
+    HOT_PROVIDER_FIELDS = ("provider", "groq_model", "gemini_model",
+                           "groq_api_key", "gemini_api_key")
+    STARTUP_ONLY = ("host", "port")
+
+    def _apply_hot(old: Settings, new: Settings) -> tuple[list[str], list[str]]:
+        changed: list[str] = []
+        if any(getattr(old, f) != getattr(new, f) for f in HOT_PROVIDER_FIELDS):
+            new_provider = build_provider(new)
+            agent.set_provider(new_provider)
+            current["provider"] = new_provider.name
+            # Derive the model from the RELOADED settings (not _model_for, which
+            # reads the captured startup `settings`).
+            current["model"] = (
+                "scripted" if new_provider.name == "scripted"
+                else new.groq_model if new_provider.name == "groq"
+                else new.gemini_model
+            )
+            changed.append("provider")
+        if old.persona_intensity != new.persona_intensity:
+            agent.set_system(system_prompt(new.persona_intensity))
+            changed.append("persona_intensity")
+        if old.max_tool_iterations != new.max_tool_iterations:
+            agent.set_max_iterations(new.max_tool_iterations)
+            changed.append("max_tool_iterations")
+        if old.log_level != new.log_level:
+            logging.getLogger("alfred_brain").setLevel(new.log_level)
+            changed.append("log_level")
+        pending = [f for f in STARTUP_ONLY if getattr(old, f) != getattr(new, f)]
+        return changed, pending
+
+    @app.post("/config/reload")
+    def reload_config() -> dict:
+        try:
+            new = Settings(_env_file=None)
+        except ValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        changed, pending = _apply_hot(state["settings"], new)
+        state["settings"] = new
+        return {"changed": changed, "startup_only_pending": pending,
+                "config": effective_config(new)}
+
     @app.get("/models")
     def models() -> dict:
-        return {"current": current, "available": available_models(settings)}
+        return {"current": current, "available": available_models(state["settings"])}
 
     @app.post("/models")
     def set_model(sel: ModelSelect) -> dict:
         try:
-            new_provider = build_explicit(settings, sel.provider, sel.model)
+            new_provider = build_explicit(state["settings"], sel.provider, sel.model)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
         agent.set_provider(new_provider)
         current["provider"] = new_provider.name
         current["model"] = "scripted" if new_provider.name == "scripted" else sel.model
-        return {"current": current, "available": available_models(settings)}
+        return {"current": current, "available": available_models(state["settings"])}
 
     def _status(corr: str) -> dict:
         uptime = (datetime.now(timezone.utc) - started).total_seconds()
