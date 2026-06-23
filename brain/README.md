@@ -16,6 +16,9 @@ uv run python -m alfred_brain
 
 - HTTP:  `GET http://127.0.0.1:8766/status`
 - WS:    `ws://127.0.0.1:8766/ws`
+- HTTP (admin, off-contract): `GET /models` lists switchable provider/model combos
+  and the live one; `POST /models {"provider","model"}` hot-swaps the reasoning
+  model at runtime (used by the desktop model picker; 400 if the key is missing).
 
 Default port is **8766** so the brain can run next to the reference mock
 (`8765`) during parallel UI development. Without a configured provider key the
