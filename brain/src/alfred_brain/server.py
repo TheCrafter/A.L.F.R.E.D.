@@ -5,7 +5,8 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 
 from alfred_protocol import (
     CommandAck, Error, KillSwitchAck, ServerHello, StatusResponse,
@@ -18,12 +19,17 @@ from .events import EventBus
 from .messages import dump, new_id, now_ts
 from .persona import system_prompt
 from .providers.base import ReasoningProvider
-from .providers.registry import build_provider
+from .providers.registry import available_models, build_explicit, build_provider
 from .session import TurnManager
 from .tools.echo import EchoTool
 from .tools.registry import ToolRegistry
 
 SUPPORTED_PROTOCOL_VERSION = 1
+
+
+class ModelSelect(BaseModel):
+    provider: str
+    model: str
 
 
 def create_app(settings: Settings, provider: ReasoningProvider | None = None) -> FastAPI:
@@ -38,6 +44,32 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
 
     app = FastAPI(title="ALFRED brain")
     app.state.turns = turns
+    app.state.agent = agent
+
+    def _model_for(p: ReasoningProvider) -> str:
+        if p.name == "gemini":
+            return settings.gemini_model
+        if p.name == "groq":
+            return settings.groq_model
+        return "scripted"
+
+    # Mutable record of the live provider+model, swappable at runtime via /models.
+    current = {"provider": provider.name, "model": _model_for(provider)}
+
+    @app.get("/models")
+    def models() -> dict:
+        return {"current": current, "available": available_models(settings)}
+
+    @app.post("/models")
+    def set_model(sel: ModelSelect) -> dict:
+        try:
+            new_provider = build_explicit(settings, sel.provider, sel.model)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        agent.set_provider(new_provider)
+        current["provider"] = new_provider.name
+        current["model"] = "scripted" if new_provider.name == "scripted" else sel.model
+        return {"current": current, "available": available_models(settings)}
 
     def _status(corr: str) -> dict:
         uptime = (datetime.now(timezone.utc) - started).total_seconds()
