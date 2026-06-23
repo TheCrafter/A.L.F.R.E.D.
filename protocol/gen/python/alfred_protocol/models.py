@@ -34,6 +34,23 @@ class Channel(StrEnum):
     voice = "voice"
 
 
+class Status(StrEnum):
+    provisional = "provisional"
+    confirmed = "confirmed"
+
+
+class MemoryItem(BaseModel):
+    id: str
+    text: str
+    title: str
+    type: str
+    tags: list[str]
+    status: Status
+    created: AwareDatetime
+    updated: AwareDatetime | None = None
+    links: list[str]
+
+
 class RiskTier(StrEnum):
     safe = "safe"
     sensitive = "sensitive"
@@ -122,7 +139,7 @@ class AgentMessage(Envelope):
     """
 
 
-class Status(StrEnum):
+class Status1(StrEnum):
     completed = "completed"
     error = "error"
     killed = "killed"
@@ -131,7 +148,7 @@ class Status(StrEnum):
 class AgentTurnComplete(Envelope):
     type: Literal["agent.turn_complete"]
     corr: str
-    status: Status
+    status: Status1
 
 
 class KillSwitchActivate(Envelope):
@@ -160,6 +177,81 @@ class Error(Envelope):
     message: str
 
 
+class Status2(StrEnum):
+    """
+    Optional status filter.
+    """
+
+    provisional = "provisional"
+    confirmed = "confirmed"
+
+
+class MemoryListRequest(Envelope):
+    type: Literal["memory.list_request"]
+    status: Status2 | None = None
+    """
+    Optional status filter.
+    """
+
+
+class MemoryListResponse(Envelope):
+    type: Literal["memory.list_response"]
+    corr: str
+    items: list[MemoryItem]
+
+
+class Status3(StrEnum):
+    provisional = "provisional"
+    confirmed = "confirmed"
+
+
+class MemoryEdit(Envelope):
+    type: Literal["memory.edit"]
+    mem_id: str
+    """
+    Target memory id (envelope id is the message id).
+    """
+    status: Status3 | None = None
+    tags: list[str] | None = None
+
+
+class MemoryDelete(Envelope):
+    type: Literal["memory.delete"]
+    mem_id: str
+    """
+    Target memory id.
+    """
+
+
+class MemoryAck(Envelope):
+    type: Literal["memory.ack"]
+    corr: str
+    ok: bool
+    error: str | None = None
+    """
+    Why the op failed, when ok is false.
+    """
+
+
+class Op(StrEnum):
+    add = "add"
+    update = "update"
+
+
+class MemoryFormed(Envelope):
+    type: Literal["memory.formed"]
+    item: MemoryItem
+    op: Op
+
+
+class MemoryRemoved(Envelope):
+    type: Literal["memory.removed"]
+    mem_id: str
+    """
+    Id of the removed memory.
+    """
+
+
 class Message(
     RootModel[
         ClientHello
@@ -175,6 +267,13 @@ class Message(
         | KillSwitchActivate
         | KillSwitchAck
         | Error
+        | MemoryListRequest
+        | MemoryListResponse
+        | MemoryEdit
+        | MemoryDelete
+        | MemoryAck
+        | MemoryFormed
+        | MemoryRemoved
     ]
 ):
     root: Annotated[
@@ -190,7 +289,14 @@ class Message(
         | AgentTurnComplete
         | KillSwitchActivate
         | KillSwitchAck
-        | Error,
+        | Error
+        | MemoryListRequest
+        | MemoryListResponse
+        | MemoryEdit
+        | MemoryDelete
+        | MemoryAck
+        | MemoryFormed
+        | MemoryRemoved,
         Field(discriminator="type", title="Message"),
     ]
     """

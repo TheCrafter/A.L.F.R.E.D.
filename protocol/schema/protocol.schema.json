@@ -17,7 +17,14 @@
     { "$ref": "#/$defs/AgentTurnComplete" },
     { "$ref": "#/$defs/KillSwitchActivate" },
     { "$ref": "#/$defs/KillSwitchAck" },
-    { "$ref": "#/$defs/Error" }
+    { "$ref": "#/$defs/Error" },
+    { "$ref": "#/$defs/MemoryListRequest" },
+    { "$ref": "#/$defs/MemoryListResponse" },
+    { "$ref": "#/$defs/MemoryEdit" },
+    { "$ref": "#/$defs/MemoryDelete" },
+    { "$ref": "#/$defs/MemoryAck" },
+    { "$ref": "#/$defs/MemoryFormed" },
+    { "$ref": "#/$defs/MemoryRemoved" }
   ],
   "$defs": {
     "Envelope": {
@@ -35,6 +42,22 @@
       "title": "Channel",
       "type": "string",
       "enum": ["desktop", "telegram", "voice"]
+    },
+    "MemoryItem": {
+      "title": "MemoryItem",
+      "type": "object",
+      "properties": {
+        "id":      { "type": "string" },
+        "text":    { "type": "string" },
+        "title":   { "type": "string" },
+        "type":    { "type": "string" },
+        "tags":    { "type": "array", "items": { "type": "string" } },
+        "status":  { "type": "string", "enum": ["provisional", "confirmed"] },
+        "created": { "type": "string", "format": "date-time" },
+        "updated": { "type": "string", "format": "date-time" },
+        "links":   { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "text", "title", "type", "tags", "status", "created", "links"]
     },
     "RiskTier": {
       "title": "RiskTier",
@@ -244,6 +267,89 @@
           "required": ["type", "code", "message"]
         }
       ]
+    },
+    "MemoryListRequest": {
+      "title": "MemoryListRequest",
+      "allOf": [ { "$ref": "#/$defs/Envelope" }, {
+        "type": "object",
+        "properties": {
+          "type": { "const": "memory.list_request" },
+          "status": { "type": "string", "enum": ["provisional", "confirmed"], "description": "Optional status filter." }
+        },
+        "required": ["type"]
+      } ]
+    },
+    "MemoryListResponse": {
+      "title": "MemoryListResponse",
+      "allOf": [ { "$ref": "#/$defs/Envelope" }, {
+        "type": "object",
+        "properties": {
+          "type": { "const": "memory.list_response" },
+          "corr": { "type": "string" },
+          "items": { "type": "array", "items": { "$ref": "#/$defs/MemoryItem" } }
+        },
+        "required": ["type", "corr", "items"]
+      } ]
+    },
+    "MemoryEdit": {
+      "title": "MemoryEdit",
+      "allOf": [ { "$ref": "#/$defs/Envelope" }, {
+        "type": "object",
+        "properties": {
+          "type": { "const": "memory.edit" },
+          "mem_id": { "type": "string", "description": "Target memory id (envelope id is the message id)." },
+          "status": { "type": "string", "enum": ["provisional", "confirmed"] },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["type", "mem_id"]
+      } ]
+    },
+    "MemoryDelete": {
+      "title": "MemoryDelete",
+      "allOf": [ { "$ref": "#/$defs/Envelope" }, {
+        "type": "object",
+        "properties": {
+          "type": { "const": "memory.delete" },
+          "mem_id": { "type": "string", "description": "Target memory id." }
+        },
+        "required": ["type", "mem_id"]
+      } ]
+    },
+    "MemoryAck": {
+      "title": "MemoryAck",
+      "allOf": [ { "$ref": "#/$defs/Envelope" }, {
+        "type": "object",
+        "properties": {
+          "type": { "const": "memory.ack" },
+          "corr": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "error": { "type": "string", "description": "Why the op failed, when ok is false." }
+        },
+        "required": ["type", "corr", "ok"]
+      } ]
+    },
+    "MemoryFormed": {
+      "title": "MemoryFormed",
+      "allOf": [ { "$ref": "#/$defs/Envelope" }, {
+        "type": "object",
+        "properties": {
+          "type": { "const": "memory.formed" },
+          "item": { "$ref": "#/$defs/MemoryItem" },
+          "op": { "type": "string", "enum": ["add", "update"] }
+        },
+        "required": ["type", "item", "op"]
+      } ]
+    },
+    "MemoryRemoved": {
+      "title": "MemoryRemoved",
+      "allOf": [ { "$ref": "#/$defs/Envelope" }, {
+        "type": "object",
+        "properties": {
+          "type": { "const": "memory.removed" },
+          "mem_id": { "type": "string", "description": "Id of the removed memory." }
+        },
+        "required": ["type", "mem_id"]
+      } ]
     }
   }
 }

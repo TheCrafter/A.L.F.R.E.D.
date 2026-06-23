@@ -18,7 +18,7 @@ def test_schema_is_valid_2020_12():
     Draft202012Validator.check_schema(schema)
 
 
-def test_schema_has_all_thirteen_messages():
+def test_schema_has_all_twenty_messages():
     schema = load_schema()
     titles = {d["title"] for d in schema["$defs"].values()}
     expected = {
@@ -26,9 +26,11 @@ def test_schema_has_all_thirteen_messages():
         "CommandSubmit", "CommandAck", "AgentThought", "AgentAction",
         "AgentMessage", "AgentTurnComplete", "KillSwitchActivate",
         "KillSwitchAck", "Error",
+        "MemoryListRequest", "MemoryListResponse", "MemoryEdit",
+        "MemoryDelete", "MemoryAck", "MemoryFormed", "MemoryRemoved",
     }
     assert expected <= titles
-    assert len(schema["oneOf"]) == 13
+    assert len(schema["oneOf"]) == 20
 
 
 EXPECTED_TYPES = {
@@ -36,6 +38,8 @@ EXPECTED_TYPES = {
     "command.submit", "command.ack", "agent.thought", "agent.action",
     "agent.message", "agent.turn_complete", "kill_switch.activate",
     "kill_switch.ack", "error",
+    "memory.list_request", "memory.list_response", "memory.edit",
+    "memory.delete", "memory.ack", "memory.formed", "memory.removed",
 }
 
 

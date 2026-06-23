@@ -21,7 +21,14 @@ export type Message =
   | AgentTurnComplete
   | KillSwitchActivate
   | KillSwitchAck
-  | Error;
+  | Error
+  | MemoryListRequest
+  | MemoryListResponse
+  | MemoryEdit
+  | MemoryDelete
+  | MemoryAck
+  | MemoryFormed
+  | MemoryRemoved;
 export type ClientHello = Envelope & {
   type: "client.hello";
   client_name: string;
@@ -131,6 +138,62 @@ export type Error = Envelope & {
   message: string;
   [k: string]: unknown;
 };
+export type MemoryListRequest = Envelope & {
+  type: "memory.list_request";
+  /**
+   * Optional status filter.
+   */
+  status?: "provisional" | "confirmed";
+  [k: string]: unknown;
+};
+export type MemoryListResponse = Envelope & {
+  type: "memory.list_response";
+  corr: string;
+  items: MemoryItem[];
+  [k: string]: unknown;
+};
+export type MemoryEdit = Envelope & {
+  type: "memory.edit";
+  /**
+   * Target memory id (envelope id is the message id).
+   */
+  mem_id: string;
+  status?: "provisional" | "confirmed";
+  tags?: string[];
+  [k: string]: unknown;
+};
+export type MemoryDelete = Envelope & {
+  type: "memory.delete";
+  /**
+   * Target memory id.
+   */
+  mem_id: string;
+  [k: string]: unknown;
+};
+export type MemoryAck = Envelope & {
+  type: "memory.ack";
+  corr: string;
+  ok: boolean;
+  /**
+   * Why the op failed, when ok is false.
+   */
+  error?: string;
+  [k: string]: unknown;
+};
+export type MemoryFormed = Envelope & {
+  type: "memory.formed";
+  item: MemoryItem;
+  op: "add" | "update";
+  [k: string]: unknown;
+};
+export type MemoryRemoved = Envelope & {
+  type: "memory.removed";
+  /**
+   * Id of the removed memory.
+   */
+  mem_id: string;
+  [k: string]: unknown;
+};
 
 /**
  * Fields shared by every message.
@@ -148,5 +211,17 @@ export interface Envelope {
    * RFC 3339 UTC timestamp.
    */
   ts: string;
+  [k: string]: unknown;
+}
+export interface MemoryItem {
+  id: string;
+  text: string;
+  title: string;
+  type: string;
+  tags: string[];
+  status: "provisional" | "confirmed";
+  created: string;
+  updated?: string;
+  links: string[];
   [k: string]: unknown;
 }

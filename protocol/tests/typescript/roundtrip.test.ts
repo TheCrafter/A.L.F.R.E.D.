@@ -19,8 +19,8 @@ const validate = ajv.compile(schema);
 const fixtures = readdirSync(fixturesDir).filter((f) => f.endsWith(".json"));
 
 describe("fixtures validate against the protocol schema (Ajv)", () => {
-  it("has 13 fixtures", () => {
-    expect(fixtures.length).toBe(13);
+  it("has 20 fixtures", () => {
+    expect(fixtures.length).toBe(20);
   });
 
   for (const file of fixtures) {
