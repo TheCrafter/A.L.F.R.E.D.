@@ -42,6 +42,7 @@ describe("turn reducer", () => {
     let turns = start();
     turns = applyMessage(turns, msg({ type: "agent.turn_complete", corr: "c1", status: "completed" }));
     expect(turns[0].status).toBe("completed");
+    expect(turns[0].endedAt).toBe("2026-06-23T00:00:00Z");
   });
 
   it("ignores messages for unknown corr without throwing", () => {
