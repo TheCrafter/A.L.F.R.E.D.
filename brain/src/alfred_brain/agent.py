@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Callable
 
 from alfred_protocol import (
@@ -12,6 +13,9 @@ from .providers.base import (
     ReasoningProvider, TextChunk, Thought, ToolCall, ToolCallRequest, TurnMessage,
 )
 from .tools.registry import ToolRegistry
+
+
+logger = logging.getLogger(__name__)
 
 
 def _summary(req: ToolCallRequest) -> str:
@@ -86,6 +90,7 @@ class AgentLoop:
             ))
             raise
         except Exception:
+            logger.exception("agent turn %s failed", corr)
             emit(AgentMessage(
                 v=1, id=new_id(), ts=now_ts(), type="agent.message",
                 corr=corr, text="My apologies, sir — I was unable to complete that request.",
