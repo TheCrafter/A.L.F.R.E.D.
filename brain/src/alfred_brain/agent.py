@@ -9,6 +9,8 @@ from alfred_protocol import (
 )
 
 from .memory import Memory
+from .memory.working import WorkingMemory
+from .memory.extraction import Extractor
 from .messages import dump, new_id, now_ts
 from .providers.base import (
     ReasoningProvider, TextChunk, Thought, ToolCall, ToolCallRequest, TurnMessage,
@@ -21,13 +23,12 @@ logger = logging.getLogger(__name__)
 
 MEMORY_GUIDANCE = (
     "# Memory\n"
-    "You have a persistent memory. Proactively call the `remember` tool — without "
-    "being asked — whenever the user reveals a durable fact worth keeping: their name "
-    "or identity, lasting preferences, ongoing projects, important people, or how they "
-    'want you to behave. Do not wait for the words "remember that"; if the user states '
-    "such a fact in passing, store it. Do NOT store trivial or one-off chatter. Write "
-    "each memory as a short, clear, self-contained statement, and use at most one broad "
-    "tag (e.g. personal, work, preference) or none. Avoid storing duplicates."
+    "You have a persistent long-term memory; durable facts are saved automatically "
+    "after the conversation — you do not need to call a tool to save them. Use the "
+    "`remember` tool only when the user explicitly asks you to remember something. "
+    "Relevant memories may be listed below. A memory marked 'unconfirmed' is not yet "
+    "verified — treat it cautiously and confirm a high-stakes one with the user "
+    "before relying on it."
 )
 
 
@@ -45,6 +46,8 @@ class AgentLoop:
         max_iterations: int = 5,
         memory: "Memory | None" = None,
         recall_top_k: int = 5,
+        working: "WorkingMemory | None" = None,
+        extractor: "Extractor | None" = None,
     ) -> None:
         self._provider = provider
         self._registry = registry
@@ -52,6 +55,9 @@ class AgentLoop:
         self._max_iterations = max_iterations
         self._memory = memory
         self._recall_top_k = recall_top_k
+        self._working = working
+        self._extractor = extractor
+        self._extract_tasks: set[asyncio.Task] = set()
 
     def set_provider(self, provider: ReasoningProvider) -> None:
         """Swap the reasoning provider at runtime (used by the model picker)."""
@@ -70,15 +76,24 @@ class AgentLoop:
         def emit(model: AgentThought | AgentMessage | AgentAction | AgentTurnComplete) -> None:
             publish(dump(model))
 
-        messages: list[TurnMessage] = [TurnMessage(role="user", content=text)]
+        messages: list[TurnMessage] = []
+        if self._working is not None:
+            messages.extend(self._working.context())
+        messages.append(TurnMessage(role="user", content=text))
+
         system = self._system
         if self._memory is not None:
             block = MEMORY_GUIDANCE
             hits = self._memory.recall(text, k=self._recall_top_k)
             if hits:
-                block += "\n\nRelevant memories:\n" + "\n".join(
-                    f"- ({h.type}) {h.text}" for h in hits)
+                lines = []
+                for h in hits:
+                    label = f"{h.type}, unconfirmed" if h.status == "provisional" else h.type
+                    lines.append(f"- ({label}) {h.text}")
+                block += "\n\nRelevant memories:\n" + "\n".join(lines)
             system = f"{self._system}\n\n{block}"
+
+        assistant_parts: list[str] = []
         try:
             for _ in range(self._max_iterations):
                 tool_results: list[tuple[ToolCallRequest, str]] = []
@@ -91,6 +106,7 @@ class AgentLoop:
                             corr=corr, text=ev.text,
                         ))
                     elif isinstance(ev, TextChunk):
+                        assistant_parts.append(ev.text)
                         emit(AgentMessage(
                             v=1, id=new_id(), ts=now_ts(), type="agent.message",
                             corr=corr, text=ev.text, final=ev.final,
@@ -116,6 +132,16 @@ class AgentLoop:
                         role="tool", content=result,
                         tool_call_id=req.call_id, tool_name=req.tool,
                     ))
+
+            if self._working is not None:
+                self._working.append("user", text)
+                self._working.append("assistant", "".join(assistant_parts))
+                if self._extractor is not None:
+                    batch = self._working.take_batch()
+                    if batch:
+                        task = asyncio.create_task(self._extractor.extract(batch))
+                        self._extract_tasks.add(task)
+                        task.add_done_callback(self._extract_tasks.discard)
 
             emit(AgentTurnComplete(
                 v=1, id=new_id(), ts=now_ts(), type="agent.turn_complete",
