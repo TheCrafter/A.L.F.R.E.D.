@@ -21,6 +21,11 @@ source; `POST /config/reload` re-applies hot fields (provider/model, persona,
 agent iterations, log level) without a restart. `host`/`port` need a restart.
 Set `ALFRED_HOME` to relocate the config + vault home (default `~/.alfred`).
 
+Memory: ALFRED stores durable facts as Obsidian-compatible markdown in
+`$ALFRED_HOME/vault/` (open the folder in Obsidian to browse). Recall is local
+(fastembed, CPU) and auto-injected each turn; the `remember`/`recall`/`forget`
+tools let ALFRED manage it. Tune `[memory] recall_top_k` / `embed_model` in config.
+
 - HTTP:  `GET http://127.0.0.1:8766/status`
 - WS:    `ws://127.0.0.1:8766/ws`
 - HTTP (admin, off-contract): `GET /models` lists switchable provider/model combos

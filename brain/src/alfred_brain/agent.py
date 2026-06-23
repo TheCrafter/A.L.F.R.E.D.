@@ -8,6 +8,7 @@ from alfred_protocol import (
     AgentAction, AgentMessage, AgentThought, AgentTurnComplete, Error,
 )
 
+from .memory import Memory
 from .messages import dump, new_id, now_ts
 from .providers.base import (
     ReasoningProvider, TextChunk, Thought, ToolCall, ToolCallRequest, TurnMessage,
@@ -30,11 +31,15 @@ class AgentLoop:
         registry: ToolRegistry,
         system: str,
         max_iterations: int = 5,
+        memory: "Memory | None" = None,
+        recall_top_k: int = 5,
     ) -> None:
         self._provider = provider
         self._registry = registry
         self._system = system
         self._max_iterations = max_iterations
+        self._memory = memory
+        self._recall_top_k = recall_top_k
 
     def set_provider(self, provider: ReasoningProvider) -> None:
         """Swap the reasoning provider at runtime (used by the model picker)."""
@@ -46,16 +51,28 @@ class AgentLoop:
     def set_max_iterations(self, n: int) -> None:
         self._max_iterations = n
 
+    def set_recall_top_k(self, n: int) -> None:
+        self._recall_top_k = n
+
     async def run(self, *, corr: str, text: str, publish: Callable[[dict], None]) -> None:
         def emit(model: AgentThought | AgentMessage | AgentAction | AgentTurnComplete) -> None:
             publish(dump(model))
 
         messages: list[TurnMessage] = [TurnMessage(role="user", content=text)]
+        system = self._system
+        if self._memory is not None:
+            block = ("# Memory\nYou have a persistent memory; use the remember "
+                     "tool to store durable facts the user shares.")
+            hits = self._memory.recall(text, k=self._recall_top_k)
+            if hits:
+                block += "\nRelevant memories:\n" + "\n".join(
+                    f"- ({h.type}) {h.text}" for h in hits)
+            system = f"{self._system}\n\n{block}"
         try:
             for _ in range(self._max_iterations):
                 tool_results: list[tuple[ToolCallRequest, str]] = []
                 async for ev in self._provider.run_turn(
-                    messages, self._registry.specs(), self._system
+                    messages, self._registry.specs(), system
                 ):
                     if isinstance(ev, Thought):
                         emit(AgentThought(

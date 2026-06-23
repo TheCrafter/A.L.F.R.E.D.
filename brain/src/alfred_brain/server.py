@@ -15,8 +15,11 @@ from alfred_protocol import (
 
 from . import SERVER_NAME, SERVER_VERSION
 from .agent import AgentLoop
-from .config import Settings, effective_config
+from .config import Settings, effective_config, home
 from .events import EventBus
+from .memory import Memory, VaultMemory
+from .memory.index import FastEmbedEmbedder
+from .memory.tools import ForgetTool, RecallTool, RememberTool
 from .messages import dump, new_id, now_ts
 from .persona import system_prompt
 from .providers.base import ReasoningProvider
@@ -33,13 +36,21 @@ class ModelSelect(BaseModel):
     model: str
 
 
-def create_app(settings: Settings, provider: ReasoningProvider | None = None) -> FastAPI:
+def create_app(settings: Settings, provider: ReasoningProvider | None = None,
+               memory: "Memory | None" = None) -> FastAPI:
     bus = EventBus()
     registry = ToolRegistry()
     registry.register(EchoTool())
     provider = provider or build_provider(settings)
+    if memory is None:
+        vault_dir = settings.memory_vault_dir or str(home() / "vault")
+        memory = VaultMemory(vault_dir, FastEmbedEmbedder(settings.memory_embed_model))
+    registry.register(RememberTool(memory))
+    registry.register(RecallTool(memory))
+    registry.register(ForgetTool(memory))
     agent = AgentLoop(provider, registry, system_prompt(settings.persona_intensity),
-                      settings.max_tool_iterations)
+                      settings.max_tool_iterations,
+                      memory=memory, recall_top_k=settings.memory_recall_top_k)
     turns = TurnManager()
     started = datetime.now(timezone.utc)
 
@@ -87,6 +98,9 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
         if old.max_tool_iterations != new.max_tool_iterations:
             agent.set_max_iterations(new.max_tool_iterations)
             changed.append("max_tool_iterations")
+        if old.memory_recall_top_k != new.memory_recall_top_k:
+            agent.set_recall_top_k(new.memory_recall_top_k)
+            changed.append("memory_recall_top_k")
         if old.log_level != new.log_level:
             logging.getLogger("alfred_brain").setLevel(new.log_level)
             changed.append("log_level")
