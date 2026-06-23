@@ -47,6 +47,19 @@ describe("store", () => {
     expect(useStore.getState().turns[0].message.text).toBe("done.");
   });
 
+  it("finalizes an in-flight turn as interrupted when the socket drops", () => {
+    const useStore = makeStore();
+    useStore.getState().connect();
+    const ws = lastSocket();
+    ws.open();
+    ws.receive(serverHello);
+    useStore.getState().submit("tell me a story");
+    expect(useStore.getState().turns[0].status).toBeUndefined();
+    ws.serverClose();
+    expect(useStore.getState().phase).toBe("closed");
+    expect(useStore.getState().turns[0].status).toBe("interrupted");
+  });
+
   it("records wire entries", () => {
     const useStore = makeStore();
     useStore.getState().connect();

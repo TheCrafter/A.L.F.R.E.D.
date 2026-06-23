@@ -30,7 +30,7 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
     proxy: {
-      "/status": { target: "http://127.0.0.1:8765", changeOrigin: true },
+      "/status": { target: "http://127.0.0.1:8766", changeOrigin: true },
     },
   },
   test: {

@@ -15,7 +15,9 @@ export interface Turn {
   thoughts: string[];
   actions: TurnAction[];
   message: { text: string; final: boolean };
-  status?: "completed" | "error" | "killed";
+  // "interrupted" is a UI-local terminal status for turns orphaned by a
+  // disconnect; the wire only carries completed | error | killed.
+  status?: "completed" | "error" | "killed" | "interrupted";
   startedAt: string;
   endedAt?: string;
 }
@@ -35,6 +37,14 @@ export function openTurn(
     startedAt: params.at,
   };
   return [...turns, turn];
+}
+
+// Mark every still-open turn (no terminal status) as interrupted. Called when
+// the connection drops so orphaned turns don't hang open with no status.
+export function finalizeOpenTurns(turns: Turn[], at: string): Turn[] {
+  return turns.map((t) =>
+    t.status ? t : { ...t, status: "interrupted", endedAt: at },
+  );
 }
 
 export function applyMessage(turns: Turn[], msg: Message): Turn[] {

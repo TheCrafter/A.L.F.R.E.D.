@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { openTurn, applyMessage } from "./turns";
+import { openTurn, applyMessage, finalizeOpenTurns } from "./turns";
 import type { Message } from "@alfred/protocol";
 
 function start() {
@@ -55,5 +55,40 @@ describe("turn reducer", () => {
     const turns = start();
     const next = applyMessage(turns, msg({ type: "status.request" }));
     expect(next).toEqual(turns);
+  });
+
+  it("groups a multi-step turn: ordered thoughts, actions, then assembled message", () => {
+    // A real multi-iteration turn: think -> act -> think -> act -> stream -> complete.
+    let turns = start();
+    const steps: Array<Partial<Message> & { type: string }> = [
+      { type: "command.ack", corr: "c1", accepted: true },
+      { type: "agent.thought", corr: "c1", text: "first, inspect" },
+      { type: "agent.action", corr: "c1", tool: "echo", summary: "echo(a)", risk: "safe" },
+      { type: "agent.thought", corr: "c1", text: "now, act" },
+      { type: "agent.action", corr: "c1", tool: "shell", summary: "build", risk: "sensitive" },
+      { type: "agent.message", corr: "c1", text: "All ", final: false },
+      { type: "agent.message", corr: "c1", text: "done, sir.", final: true },
+      { type: "agent.turn_complete", corr: "c1", status: "completed" },
+    ];
+    for (const s of steps) turns = applyMessage(turns, msg(s));
+    const t = turns[0];
+    expect(t.thoughts).toEqual(["first, inspect", "now, act"]);
+    expect(t.actions.map((a) => a.tool)).toEqual(["echo", "shell"]);
+    expect(t.actions[1].risk).toBe("sensitive");
+    expect(t.message.text).toBe("All done, sir.");
+    expect(t.message.final).toBe(true);
+    expect(t.status).toBe("completed");
+  });
+
+  it("finalizes only open turns as interrupted on disconnect", () => {
+    let turns = start();
+    turns = applyMessage(turns, msg({ type: "agent.thought", corr: "c1", text: "mid-turn" }));
+    turns = openTurn(turns, { corr: "c2", commandText: "done one", at: "2026-06-23T00:00:01Z" });
+    turns = applyMessage(turns, msg({ type: "agent.turn_complete", corr: "c2", status: "completed" }));
+
+    const next = finalizeOpenTurns(turns, "2026-06-23T00:00:05Z");
+    expect(next[0].status).toBe("interrupted");
+    expect(next[0].endedAt).toBe("2026-06-23T00:00:05Z");
+    expect(next[1].status).toBe("completed"); // already terminal — untouched
   });
 });

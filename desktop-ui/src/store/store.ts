@@ -7,7 +7,7 @@ import {
   type WireEntry,
 } from "../protocol/client";
 import { fetchStatus, httpBaseFromWs } from "../protocol/status";
-import { openTurn, applyMessage, type Turn } from "./turns";
+import { openTurn, applyMessage, finalizeOpenTurns, type Turn } from "./turns";
 
 const WIRE_LIMIT = 500;
 
@@ -42,7 +42,7 @@ export function createStore(
 
   return create<AppState>((set, get) => ({
     phase: "idle",
-    url: "ws://127.0.0.1:8765/ws",
+    url: "ws://127.0.0.1:8766/ws",
     turns: [],
     wire: [],
 
@@ -52,9 +52,19 @@ export function createStore(
       client?.disconnect();
       const c = clientFactory(get().url);
       client = c;
-      c.on("phase", (e) =>
-        set({ phase: e.phase, server: e.server ?? get().server, lastError: e.error }),
-      );
+      c.on("phase", (e) => {
+        // A drop (reconnecting/closed) orphans any in-flight turn — finalize it
+        // so it doesn't hang open with no status.
+        const dropped = e.phase === "reconnecting" || e.phase === "closed";
+        set({
+          phase: e.phase,
+          server: e.server ?? get().server,
+          lastError: e.error,
+          ...(dropped
+            ? { turns: finalizeOpenTurns(get().turns, new Date().toISOString()) }
+            : {}),
+        });
+      });
       c.on("message", (m) => set({ turns: applyMessage(get().turns, m) }));
       c.on("wire", (w) => set({ wire: [...get().wire, w].slice(-WIRE_LIMIT) }));
       c.connect();
