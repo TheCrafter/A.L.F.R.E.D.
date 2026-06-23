@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -36,6 +37,7 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
     started = datetime.now(timezone.utc)
 
     app = FastAPI(title="ALFRED brain")
+    app.state.turns = turns
 
     def _status(corr: str) -> dict:
         uptime = (datetime.now(timezone.utc) - started).total_seconds()
@@ -56,6 +58,12 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
         try:
             hello = await socket.receive_json()
         except WebSocketDisconnect:
+            return
+        except (json.JSONDecodeError, KeyError):
+            await socket.send_json(dump(Error(
+                v=1, id=new_id(), ts=now_ts(), type="error",
+                code="bad_message", message="Expected a JSON message.")))
+            await socket.close()
             return
         if hello.get("type") != "client.hello":
             await socket.send_json(dump(Error(
@@ -91,9 +99,16 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
                 await socket.send_json(msg)
 
         sender_task = asyncio.create_task(sender())
+        my_turns: list[asyncio.Task] = []
         try:
             while True:
-                msg = await socket.receive_json()
+                try:
+                    msg = await socket.receive_json()
+                except (json.JSONDecodeError, KeyError):
+                    q.put_nowait(dump(Error(
+                        v=1, id=new_id(), ts=now_ts(), type="error",
+                        code="bad_message", message="Expected a JSON message.")))
+                    continue
                 kind = msg.get("type")
                 mid = msg.get("id")
                 if mid is None:
@@ -105,8 +120,8 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
                     bus.publish(dump(CommandAck(
                         v=1, id=new_id(), ts=now_ts(), type="command.ack",
                         corr=mid, accepted=True)))
-                    turns.start(mid, agent.run(
-                        corr=mid, text=msg.get("text", ""), publish=bus.publish))
+                    my_turns.append(turns.start(mid, agent.run(
+                        corr=mid, text=msg.get("text", ""), publish=bus.publish)))
                 elif kind == "kill_switch.activate":
                     await turns.kill_all()
                     q.put_nowait(dump(KillSwitchAck(
@@ -121,6 +136,11 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None) ->
         except WebSocketDisconnect:
             pass
         finally:
+            # Cancel this connection's in-flight turns so they don't keep
+            # running (and leaking output to the bus) after the client is gone.
+            for t in my_turns:
+                if not t.done():
+                    t.cancel()
             bus.unsubscribe(q)
             sender_task.cancel()
 
