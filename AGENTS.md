@@ -15,7 +15,7 @@ delivery.
 |------|-------|--------|
 | `protocol/` | JSON Schema → Pydantic + TS | ✅ **Phase 0 done** — the shared WebSocket/HTTP contract; single source of truth |
 | `brain/` | Python | ✅ **Phase 1 done** — WS/HTTP server, event bus, reasoning provider (Gemini/scripted), agent loop, kill switch, persona |
-| `desktop-ui/` | TypeScript (Tauri/React) | Phase 4 (dashboard + voice) — not yet started |
+| `desktop-ui/` | TypeScript (Tauri/React) | Phase 4 — dashboard MVP built (event stream, command, status, kill switch, wire inspector); voice + memory panel deferred |
 | `adapters/telegram/` | TS/Python | Phase 5 (remote channel) — not yet started |
 | `docs/` | Markdown | specs + plans |
 
