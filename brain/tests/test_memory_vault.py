@@ -164,3 +164,44 @@ def test_list_entities(tmp_path):
     v.ensure_entity("Dimitris", "person")
     v.ensure_entity("Greece", "place")
     assert sorted(v.list_entities()) == [("Dimitris", "person"), ("Greece", "place")]
+
+
+# Regression tests for fix wave 2026-06-24
+
+def test_text_with_related_line_round_trips(tmp_path):
+    """Fix 1: text containing a 'Related:' line must not be truncated."""
+    v = Vault(tmp_path / "vault")
+    text = "The email said:\nRelated: see the attachment."
+    rec = v.write(text, title="email note")
+    again = v.read(rec.path)
+    assert again.text == text
+    assert again.links == []
+
+
+def test_text_with_related_line_plus_real_links(tmp_path):
+    """Fix 1: text with embedded 'Related:' line + real links both preserved."""
+    v = Vault(tmp_path / "vault")
+    text = "Note:\nRelated: prior emails."
+    rec = v.write(text, title="mixed note", links=["Dimitris"])
+    again = v.read(rec.path)
+    assert again.text == text
+    assert again.links == ["Dimitris"]
+
+
+def test_text_with_wikilink_brackets_not_mistaken_for_links(tmp_path):
+    """Fix 1: wikilink syntax in body text does not end up as links."""
+    v = Vault(tmp_path / "vault")
+    text = "See [[some doc]] for details."
+    rec = v.write(text, title="doc ref")
+    again = v.read(rec.path)
+    assert again.text == text
+    assert again.links == []
+
+
+def test_entity_name_with_brackets_sanitized(tmp_path):
+    """Fix 2: brackets in entity name are stripped from filename."""
+    v = Vault(tmp_path / "vault")
+    stem = v.ensure_entity("Project [Alpha]", "project")
+    assert "[" not in stem and "]" not in stem
+    hub = tmp_path / "vault" / "entities" / f"{stem}.md"
+    assert hub.exists()

@@ -10,8 +10,8 @@ import yaml
 from .record import MemoryRecord
 
 _FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
-_ILLEGAL = re.compile(r'[\\/:*?"<>|]')
-_RELATED = re.compile(r"\n+Related:\s*(.+)$", re.DOTALL)
+_ILLEGAL = re.compile(r'[\\/:*?"<>|\[\]]')
+_RELATED = re.compile(r"\n\nRelated:\s*((?:\[\[[^\]]+\]\](?:,\s*)?)+)\s*$")
 
 
 def _safe_filename(title: str) -> str:
@@ -37,12 +37,6 @@ def _new_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
-def _slugify(text: str) -> str:
-    words = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-").split("-")
-    slug = "-".join(w for w in words if w)[:40].strip("-")
-    return slug or "memory"
-
-
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -50,7 +44,10 @@ def _now() -> str:
 class Vault:
     """Reads/writes memories as Obsidian-compatible markdown notes.
 
-    Layout: <vault_dir>/memories/<slug>-<id>.md  (frontmatter + body).
+    Layout:
+      memories/<safe-title>.md  — fact notes (frontmatter + body; id in frontmatter)
+      entities/<name>.md        — entity hub notes
+
     The vault is the source of truth for the Memory subsystem.
     """
 
