@@ -14,6 +14,13 @@ cp .env.example .env        # set GEMINI_API_KEY for the real provider (optional
 uv run python -m alfred_brain
 ```
 
+On first launch the brain creates `~/.alfred/config.toml` (seeded from any env
+vars / `.env` present) and reads config from there. Env vars override the file.
+`GET /config` shows the effective config (secrets redacted) with each value's
+source; `POST /config/reload` re-applies hot fields (provider/model, persona,
+agent iterations, log level) without a restart. `host`/`port` need a restart.
+Set `ALFRED_HOME` to relocate the config + vault home (default `~/.alfred`).
+
 - HTTP:  `GET http://127.0.0.1:8766/status`
 - WS:    `ws://127.0.0.1:8766/ws`
 - HTTP (admin, off-contract): `GET /models` lists switchable provider/model combos
