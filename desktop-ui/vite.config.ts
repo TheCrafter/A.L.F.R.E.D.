@@ -10,9 +10,6 @@ const protocolTypes = fileURLToPath(
 const protocolSchema = fileURLToPath(
   new URL("../protocol/schema/protocol.schema.json", import.meta.url),
 );
-const tauriHttpStub = fileURLToPath(
-  new URL("./src/protocol/__stubs__/tauri-plugin-http.ts", import.meta.url),
-);
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -20,9 +17,6 @@ export default defineConfig({
     alias: {
       "@alfred/protocol": protocolTypes,
       "@alfred/protocol-schema": protocolSchema,
-      // Stub for the Tauri HTTP plugin — not installed until Task 12.
-      // isTauri() returns false in browser/test so this path is never reached.
-      "@tauri-apps/plugin-http": tauriHttpStub,
     },
   },
   server: {

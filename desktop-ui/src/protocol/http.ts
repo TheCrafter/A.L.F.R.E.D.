@@ -17,7 +17,13 @@ export type HttpGet = (url: string) => Promise<HttpResponse>;
 // browser, use the global fetch (same-origin path goes through the Vite proxy).
 export async function defaultGet(url: string): Promise<HttpResponse> {
   if (isTauri()) {
-    const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
+    // Non-literal specifier + @vite-ignore so Vite leaves this as a runtime-only
+    // dynamic import (never statically resolved at build time). The package is
+    // installed in Task 12; this branch is unreachable until isTauri() is true.
+    const pkg = "@tauri-apps/plugin-http";
+    const { fetch: tauriFetch } = (await import(
+      /* @vite-ignore */ pkg
+    )) as typeof import("@tauri-apps/plugin-http");
     const res = await tauriFetch(url, { method: "GET" });
     return { ok: res.ok, status: res.status, json: () => res.json() };
   }
