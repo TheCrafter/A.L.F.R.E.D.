@@ -56,6 +56,7 @@ class Vault:
 
     def __init__(self, vault_dir: Path) -> None:
         self._dir = Path(vault_dir) / "memories"
+        self._entities = Path(vault_dir) / "entities"
 
     def write(self, text: str, *, type: str = "note",
               tags: list[str] | None = None, status: str = "confirmed",
@@ -141,3 +142,27 @@ class Vault:
                 rec.path.unlink()
                 return True
         return False
+
+    def ensure_entity(self, name: str, type: str = "topic") -> str:
+        name = name.strip()
+        stem = _safe_filename(name)
+        self._entities.mkdir(parents=True, exist_ok=True)
+        key = stem.casefold()
+        for p in self._entities.glob("*.md"):
+            if p.stem.casefold() == key:
+                return p.stem
+        front = yaml.safe_dump({"type": type, "created": _now()},
+                               sort_keys=False, allow_unicode=True)
+        (self._entities / f"{stem}.md").write_text(
+            f"---\n{front}---\n\n# {name}\n", encoding="utf-8")
+        return stem
+
+    def list_entities(self) -> list[tuple[str, str]]:
+        if not self._entities.is_dir():
+            return []
+        out: list[tuple[str, str]] = []
+        for p in sorted(self._entities.glob("*.md")):
+            m = _FRONTMATTER.match(p.read_text(encoding="utf-8"))
+            meta = (yaml.safe_load(m.group(1)) if m else {}) or {}
+            out.append((p.stem, str(meta.get("type", "topic"))))
+        return out

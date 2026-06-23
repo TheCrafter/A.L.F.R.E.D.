@@ -77,3 +77,13 @@ def test_remember_with_title_and_links(tmp_path):
                        links=["Dimitris"])
     assert rec.title == "Dimitris age" and rec.links == ["Dimitris"]
     assert rec.path.name == "Dimitris age.md"
+
+
+def test_facade_ensure_and_list_entities(tmp_path):
+    from alfred_brain.memory import VaultMemory
+    from tests.test_memory_index import FakeEmbedder
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    assert mem.ensure_entity("Alfred", "project") == "Alfred"
+    assert mem.list_entities() == [("Alfred", "project")]
+    # hubs are not facts -> not recalled / not in all()
+    assert mem.all() == []

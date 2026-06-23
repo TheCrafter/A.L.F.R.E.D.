@@ -131,3 +131,36 @@ def test_update_keeps_filename_stable(tmp_path):
     assert out.path.name == "Original Title.md"   # NOT renamed
     assert out.title == "Totally Different"
     assert out.links == ["Greece"]
+
+
+def test_ensure_entity_creates_hub(tmp_path):
+    v = Vault(tmp_path / "vault")
+    stem = v.ensure_entity("Dimitris", "person")
+    assert stem == "Dimitris"
+    hub = (tmp_path / "vault" / "entities" / "Dimitris.md")
+    assert hub.exists()
+    raw = hub.read_text(encoding="utf-8")
+    assert "type: person" in raw and "# Dimitris" in raw
+
+
+def test_ensure_entity_is_case_insensitive_dedup(tmp_path):
+    v = Vault(tmp_path / "vault")
+    a = v.ensure_entity("Dimitris", "person")
+    b = v.ensure_entity("dimitris", "person")
+    assert a == b == "Dimitris"   # reuses first-seen spelling
+    hubs = list((tmp_path / "vault" / "entities").glob("*.md"))
+    assert len(hubs) == 1
+
+
+def test_entities_excluded_from_facts(tmp_path):
+    v = Vault(tmp_path / "vault")
+    v.write("a fact", title="Fact A")
+    v.ensure_entity("Dimitris", "person")
+    assert [r.title for r in v.all()] == ["Fact A"]   # hub not in all()
+
+
+def test_list_entities(tmp_path):
+    v = Vault(tmp_path / "vault")
+    v.ensure_entity("Dimitris", "person")
+    v.ensure_entity("Greece", "place")
+    assert sorted(v.list_entities()) == [("Dimitris", "person"), ("Greece", "place")]

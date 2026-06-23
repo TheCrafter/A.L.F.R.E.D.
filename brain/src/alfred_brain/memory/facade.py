@@ -58,3 +58,9 @@ class VaultMemory:
 
     def all(self) -> list[MemoryRecord]:
         return list(self._records.values())
+
+    def ensure_entity(self, name: str, type: str = "topic") -> str:
+        return self._vault.ensure_entity(name, type)
+
+    def list_entities(self) -> list[tuple[str, str]]:
+        return self._vault.list_entities()
