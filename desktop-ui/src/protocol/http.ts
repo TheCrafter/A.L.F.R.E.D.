@@ -14,6 +14,7 @@ export interface HttpResponse {
 }
 
 export type HttpGet = (url: string) => Promise<HttpResponse>;
+export type HttpPost = (url: string, body: unknown) => Promise<HttpResponse>;
 
 // In Tauri, route through the HTTP plugin to bypass webview CORS; in a plain
 // browser, use the global fetch (same-origin path goes through the Vite proxy).
@@ -31,6 +32,20 @@ export async function defaultGet(url: string): Promise<HttpResponse> {
   return { ok: res.ok, status: res.status, json: () => res.json() };
 }
 
+export async function defaultPost(url: string, body: unknown): Promise<HttpResponse> {
+  const init: RequestInit = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+  const res = isTauri() ? await tauriFetch(url, init) : await fetch(url, init);
+  return { ok: res.ok, status: res.status, json: () => res.json() };
+}
+
 export function statusUrlFor(baseUrl: string): string {
   return isTauri() ? `${baseUrl}/status` : "/status";
+}
+
+export function modelsUrlFor(baseUrl: string): string {
+  return isTauri() ? `${baseUrl}/models` : "/models";
 }

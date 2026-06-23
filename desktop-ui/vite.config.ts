@@ -24,6 +24,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/status": { target: "http://127.0.0.1:8767", changeOrigin: true },
+      "/models": { target: "http://127.0.0.1:8767", changeOrigin: true },
     },
   },
   test: {

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useStore } from "../store/store";
+import { ModelPicker } from "./ModelPicker";
 
 export function StatusPanel() {
   const status = useStore((s) => s.status);
@@ -17,6 +18,7 @@ export function StatusPanel() {
   return (
     <aside className="w-64 space-y-2 border-l border-hud-dim/30 bg-panel/50 p-4 text-xs">
       <h2 className="text-[10px] uppercase tracking-[0.3em] text-hud-dim">Status</h2>
+      <ModelPicker />
       {statusError && <p className="break-all text-danger">{statusError}</p>}
       {status ? (
         <dl className="space-y-1 text-hud-dim">
