@@ -94,19 +94,28 @@ registry catalog (`GROQ_MODELS` / `GEMINI_MODELS`) at template-write time.
 `init → env → dotenv → toml(config.toml) → defaults`. So an env var (or repo
 `.env`) overrides the file, which overrides field defaults.
 
-`Settings` becomes **nested** to mirror the TOML sections — sub-models `server`,
-`reasoning`, `persona`, `agent`, `logging`. **Each field keeps its existing env
-alias** (`validation_alias`), so current env names stay valid and backward
-compatible: `GROQ_API_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GROQ_MODEL`,
-`ALFRED_PROVIDER`, `ALFRED_HOST`, `ALFRED_PORT`, `ALFRED_PERSONA_INTENSITY`,
-`ALFRED_MAX_TOOL_ITERATIONS`, plus new `ALFRED_LOG_LEVEL`. Access sites
-(`server.py`, `providers/registry.py`, `__main__.py`) are updated to the nested
-paths (e.g. `settings.server.port`, `settings.reasoning.provider`).
+`Settings` **stays flat** (current field names unchanged) — the sectioned TOML is
+**flattened on load** by the TOML source via an explicit section→field map. This
+keeps every existing access site and test untouched while the *file* stays nicely
+sectioned for the user. The map:
 
-Validated `Literal`s: `reasoning.provider ∈ {groq, gemini, scripted}`,
-`persona.intensity ∈ {full, light, off}`, `logging.level ∈ {DEBUG, INFO, WARNING,
-ERROR, CRITICAL}`. `server.port` constrained to 1–65535; `agent.max_tool_iterations
-≥ 1`.
+| TOML | flat field |
+|------|-----------|
+| `[server] host` / `port` | `host` / `port` |
+| `[reasoning] provider` / `groq_api_key` / `groq_model` / `gemini_api_key` / `gemini_model` | same names |
+| `[persona] intensity` | `persona_intensity` |
+| `[agent] max_tool_iterations` | `max_tool_iterations` |
+| `[logging] level` | `log_level` (new field) |
+
+**Each field keeps its existing env alias** (`validation_alias`), so current env
+names stay valid and backward compatible: `GROQ_API_KEY`, `GEMINI_API_KEY`,
+`GEMINI_MODEL`, `GROQ_MODEL`, `ALFRED_PROVIDER`, `ALFRED_HOST`, `ALFRED_PORT`,
+`ALFRED_PERSONA_INTENSITY`, `ALFRED_MAX_TOOL_ITERATIONS`, plus new
+`ALFRED_LOG_LEVEL`.
+
+Validated `Literal`s: `provider ∈ {groq, gemini, scripted}`, `persona_intensity ∈
+{full, light, off}`, `log_level ∈ {DEBUG, INFO, WARNING, ERROR, CRITICAL}`. `port`
+constrained to 1–65535; `max_tool_iterations ≥ 1`.
 
 ## 6. First-run bootstrap
 
@@ -162,7 +171,8 @@ Alongside `/status` and `/models`, both leaving the frozen WS contract untouched
 
 A small `config` package in the brain owns:
 - `home()` — resolve `$ALFRED_HOME` (env or `~/.alfred`).
-- the nested `Settings` model + the TOML settings source + source-tracking.
+- the flat `Settings` model + the section-flattening TOML settings source + per-field
+  source tracking.
 - `bootstrap()` — create home and write the seeded template when missing.
 - `effective_view(settings)` — redacted config + per-field source for `GET /config`.
 - `template(settings_env)` — render the documented TOML (model comments from the
