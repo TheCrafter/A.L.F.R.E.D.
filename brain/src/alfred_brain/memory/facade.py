@@ -23,8 +23,9 @@ class VaultMemory:
             self._index.add(rec.id, rec.text)
 
     def remember(self, text: str, *, type: str = "note",
-                 tags: list[str] | None = None) -> MemoryRecord:
-        rec = self._vault.write(text, type=type, tags=tags)
+                 tags: list[str] | None = None,
+                 status: str = "confirmed") -> MemoryRecord:
+        rec = self._vault.write(text, type=type, tags=tags, status=status)
         self._records[rec.id] = rec
         self._index.add(rec.id, rec.text)
         return rec
@@ -32,6 +33,18 @@ class VaultMemory:
     def recall(self, query: str, *, k: int = 5) -> list[MemoryRecord]:
         return [self._records[i] for i, _ in self._index.search(query, k)
                 if i in self._records]
+
+    def update(self, id: str, *, text: str | None = None, type: str | None = None,
+               tags: list[str] | None = None,
+               status: str | None = None) -> MemoryRecord | None:
+        rec = self._vault.update(id, text=text, type=type, tags=tags, status=status)
+        if rec is None:
+            return None
+        self._records[rec.id] = rec
+        if text is not None:
+            self._index.remove(rec.id)
+            self._index.add(rec.id, rec.text)
+        return rec
 
     def forget(self, id: str) -> bool:
         if not self._vault.delete(id):

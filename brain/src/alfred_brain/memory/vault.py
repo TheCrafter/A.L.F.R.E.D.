@@ -37,21 +37,25 @@ class Vault:
         self._dir = Path(vault_dir) / "memories"
 
     def write(self, text: str, *, type: str = "note",
-              tags: list[str] | None = None) -> MemoryRecord:
+              tags: list[str] | None = None,
+              status: str = "confirmed") -> MemoryRecord:
         self._dir.mkdir(parents=True, exist_ok=True)
         rec = MemoryRecord(
             id=_new_id(), text=text, type=type, tags=list(tags or []),
-            status="active", created=_now(),
+            status=status, created=_now(),
             path=Path(),  # set below
         )
         rec.path = self._dir / f"{_slugify(text)}-{rec.id}.md"
-        front = yaml.safe_dump(
-            {"id": rec.id, "created": rec.created, "type": rec.type,
-             "tags": rec.tags, "status": rec.status},
-            sort_keys=False, allow_unicode=True,
-        )
-        rec.path.write_text(f"---\n{front}---\n\n{text}\n", encoding="utf-8")
+        rec.path.write_text(self._render(rec), encoding="utf-8")
         return rec
+
+    def _render(self, rec: MemoryRecord) -> str:
+        meta = {"id": rec.id, "created": rec.created, "type": rec.type,
+                "tags": rec.tags, "status": rec.status}
+        if rec.updated:
+            meta["updated"] = rec.updated
+        front = yaml.safe_dump(meta, sort_keys=False, allow_unicode=True)
+        return f"---\n{front}---\n\n{rec.text}\n"
 
     def read(self, path: Path) -> MemoryRecord:
         raw = Path(path).read_text(encoding="utf-8")
@@ -64,12 +68,32 @@ class Vault:
             type=str(meta.get("type", "note")), tags=list(meta.get("tags") or []),
             status=str(meta.get("status", "active")),
             created=str(meta.get("created", "")), path=Path(path),
+            updated=(str(meta["updated"]) if meta.get("updated") else None),
         )
 
     def all(self) -> list[MemoryRecord]:
         if not self._dir.is_dir():
             return []
         return [self.read(p) for p in sorted(self._dir.glob("*.md"))]
+
+    def update(self, id: str, *, text: str | None = None, type: str | None = None,
+               tags: list[str] | None = None,
+               status: str | None = None) -> MemoryRecord | None:
+        for rec in self.all():
+            if rec.id != id:
+                continue
+            if text is not None:
+                rec.text = text
+            if type is not None:
+                rec.type = type
+            if tags is not None:
+                rec.tags = list(tags)
+            if status is not None:
+                rec.status = status
+            rec.updated = _now()
+            rec.path.write_text(self._render(rec), encoding="utf-8")
+            return rec
+        return None
 
     def delete(self, id: str) -> bool:
         for rec in self.all():

@@ -22,7 +22,7 @@ def test_read_round_trips(tmp_path):
     assert again.text == "alpha beta"
     assert again.type == "fact"
     assert again.tags == ["t1", "t2"]
-    assert again.status == "active"
+    assert again.status == "confirmed"
 
 
 def test_all_lists_every_note(tmp_path):
@@ -45,3 +45,30 @@ def test_slug_is_filesystem_safe(tmp_path):
     rec = v.write("Hello, World! / weird:name?")
     assert rec.path.is_file()                    # no illegal chars crashed the write
     assert "/" not in rec.path.name and ":" not in rec.path.name
+
+
+def test_write_accepts_status(tmp_path):
+    v = Vault(tmp_path / "vault")
+    rec = v.write("provisional fact", status="provisional")
+    assert rec.status == "provisional"
+    assert v.read(rec.path).status == "provisional"
+
+
+def test_update_rewrites_in_place(tmp_path):
+    v = Vault(tmp_path / "vault")
+    rec = v.write("old text", type="note", status="provisional")
+    path_before = rec.path
+    updated = v.update(rec.id, text="new text", status="confirmed")
+    assert updated is not None
+    assert updated.id == rec.id
+    assert updated.path == path_before  # filename/slug preserved
+    assert updated.text == "new text"
+    assert updated.status == "confirmed"
+    assert updated.updated is not None
+    reread = v.read(path_before)
+    assert reread.text == "new text" and reread.status == "confirmed"
+
+
+def test_update_unknown_id_returns_none(tmp_path):
+    v = Vault(tmp_path / "vault")
+    assert v.update("nope", text="x") is None

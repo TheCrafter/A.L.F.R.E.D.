@@ -41,3 +41,29 @@ def test_index_rebuilds_from_existing_vault(tmp_path):
 
 def test_is_a_memory(tmp_path):
     assert isinstance(_mem(tmp_path), Memory)
+
+
+def test_remember_default_status_confirmed(tmp_path):
+    from alfred_brain.memory import VaultMemory
+    from tests.test_memory_index import FakeEmbedder
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    rec = mem.remember("a fact")
+    assert rec.status == "confirmed"
+
+
+def test_update_changes_status_and_text_and_index(tmp_path):
+    from alfred_brain.memory import VaultMemory
+    from tests.test_memory_index import FakeEmbedder
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    rec = mem.remember("user likes tea", type="preference", status="provisional")
+    out = mem.update(rec.id, text="user likes coffee", status="confirmed")
+    assert out is not None and out.status == "confirmed"
+    hits = mem.recall("coffee", k=5)
+    assert any(h.text == "user likes coffee" for h in hits)
+
+
+def test_update_unknown_id_returns_none(tmp_path):
+    from alfred_brain.memory import VaultMemory
+    from tests.test_memory_index import FakeEmbedder
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    assert mem.update("missing", text="x") is None

@@ -35,6 +35,7 @@ class RememberTool:
             text,
             type=str(args.get("type", "note")),
             tags=list(args.get("tags") or []),
+            status="confirmed",
         )
         return f"Remembered ({rec.type}) as {rec.id}."
 
