@@ -20,6 +20,13 @@ class RememberTool:
                      "default": "note"},
             "tags": {"type": "array", "items": {"type": "string"},
                      "description": "Optional tags."},
+            "title": {"type": "string",
+                      "description": "Short note title (<= 6 words). Optional."},
+            "entities": {"type": "array", "items": {
+                "type": "object",
+                "properties": {"name": {"type": "string"},
+                               "type": {"type": "string"}}},
+                "description": "People/places/projects/topics this concerns. Optional."},
         },
         "required": ["text"],
     }
@@ -31,11 +38,20 @@ class RememberTool:
         text = str(args.get("text", "")).strip()
         if not text:
             return "Error: text is required."
+        links: list[str] = []
+        for e in (args.get("entities") or []):
+            if isinstance(e, dict):
+                name = str(e.get("name", "")).strip()
+                if name:
+                    links.append(self._memory.ensure_entity(
+                        name, str(e.get("type", "topic"))))
         rec = self._memory.remember(
             text,
             type=str(args.get("type", "note")),
             tags=list(args.get("tags") or []),
             status="confirmed",
+            title=str(args.get("title", "")).strip(),
+            links=links,
         )
         return f"Remembered ({rec.type}) as {rec.id}."
 

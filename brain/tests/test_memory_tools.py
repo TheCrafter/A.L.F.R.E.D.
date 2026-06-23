@@ -49,3 +49,23 @@ async def test_tools_conform_and_carry_risk(tmp_path):
         assert isinstance(tool, Tool)
         assert tool.risk.value == risk_name
         assert "type" in tool.parameters
+
+
+async def test_remember_tool_with_title_and_entities(tmp_path):
+    m = _mem(tmp_path)
+    tool = RememberTool(m)
+    await tool.run({"text": "Dimitris created Alfred.", "title": "Dimitris created Alfred",
+                    "entities": [{"name": "Dimitris", "type": "person"},
+                                 {"name": "Alfred", "type": "project"}]})
+    rec = m.all()[0]
+    assert rec.title == "Dimitris created Alfred"
+    assert rec.links == ["Dimitris", "Alfred"]
+    assert sorted(m.list_entities()) == [("Alfred", "project"), ("Dimitris", "person")]
+
+
+async def test_remember_tool_without_title_derives_one(tmp_path):
+    m = _mem(tmp_path)
+    await RememberTool(m).run({"text": "one two three four five six seven eight nine"})
+    rec = m.all()[0]
+    assert rec.title == "one two three four five six seven eight"
+    assert rec.links == []
