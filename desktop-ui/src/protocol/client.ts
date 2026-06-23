@@ -1,4 +1,4 @@
-import type { Message, ServerHello } from "@alfred/protocol";
+import type { Message } from "@alfred/protocol";
 import { validateMessage } from "./validator";
 
 export type ConnectionPhase =
@@ -179,14 +179,13 @@ export class ProtocolClient {
 
   protected onValidMessage(msg: Message): void {
     if (msg.type === "server.hello") {
-      const hello = msg as ServerHello;
       this.reconnectAttempts = 0;
       this.setPhase("ready", {
         server: {
-          serverName: hello.server_name,
-          serverVersion: hello.server_version,
-          sessionId: hello.session_id,
-          protocolVersion: hello.protocol_version,
+          serverName: msg.server_name,
+          serverVersion: msg.server_version,
+          sessionId: msg.session_id,
+          protocolVersion: msg.protocol_version,
         },
       });
     } else if (msg.type === "error" && msg.code === "unsupported_version") {
