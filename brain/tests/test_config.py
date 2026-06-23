@@ -7,7 +7,7 @@ def test_defaults():
     assert s.port == 8766
     assert s.persona_intensity == "full"
     assert s.max_tool_iterations == 5
-    assert s.gemini_model == "gemini-2.0-flash"
+    assert s.gemini_model == "gemini-2.5-flash"
 
 
 def test_env_override(monkeypatch):

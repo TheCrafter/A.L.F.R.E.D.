@@ -28,7 +28,7 @@ always boots.
 |-----|---------|---------|
 | `ALFRED_PROVIDER` | `gemini` | `gemini` \| `scripted` (`groq`/`ollama` reserved) |
 | `GEMINI_API_KEY` | — | Google AI Studio free key |
-| `GEMINI_MODEL` | `gemini-2.0-flash` | model id |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | model id |
 | `ALFRED_HOST` | `127.0.0.1` | bind host |
 | `ALFRED_PORT` | `8766` | bind port |
 | `ALFRED_PERSONA_INTENSITY` | `full` | `off` \| `light` \| `full` |
