@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from alfred_protocol import (
-    AgentTurnComplete, CommandAck, Error, KillSwitchAck, ServerHello, StatusResponse,
+    CommandAck, Error, KillSwitchAck, ServerHello, StatusResponse,
 )
 
 from . import SERVER_NAME, SERVER_VERSION

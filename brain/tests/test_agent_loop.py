@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from alfred_brain.agent import AgentLoop
-from alfred_brain.providers.base import Thought, ProviderEvent
+from alfred_brain.providers.base import Thought
 from alfred_brain.providers.scripted import ScriptedProvider
 from alfred_brain.tools.echo import EchoTool
 from alfred_brain.tools.registry import ToolRegistry

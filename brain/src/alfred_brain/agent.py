@@ -33,7 +33,7 @@ class AgentLoop:
         self._max_iterations = max_iterations
 
     async def run(self, *, corr: str, text: str, publish: Callable[[dict], None]) -> None:
-        def emit(model) -> None:
+        def emit(model: AgentThought | AgentMessage | AgentAction | AgentTurnComplete) -> None:
             publish(dump(model))
 
         messages: list[TurnMessage] = [TurnMessage(role="user", content=text)]
