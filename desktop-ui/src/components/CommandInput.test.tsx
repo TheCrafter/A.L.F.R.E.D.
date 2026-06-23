@@ -16,6 +16,18 @@ describe("CommandInput", () => {
     expect(submit).toHaveBeenCalledWith("check the build", undefined);
   });
 
+  it("sends the scope and clears the scope field after send", async () => {
+    const submit = vi.fn();
+    useStore.setState({ submit });
+    render(<CommandInput />);
+    const scopeInput = screen.getByPlaceholderText(/scope/i);
+    await userEvent.type(scopeInput, "business");
+    await userEvent.type(screen.getByPlaceholderText(/command/i), "summarize Q3");
+    await userEvent.click(screen.getByRole("button", { name: /send/i }));
+    expect(submit).toHaveBeenCalledWith("summarize Q3", "business");
+    expect(scopeInput).toHaveValue("");
+  });
+
   it("is disabled when not ready", () => {
     useStore.setState({ phase: "idle" });
     render(<CommandInput />);

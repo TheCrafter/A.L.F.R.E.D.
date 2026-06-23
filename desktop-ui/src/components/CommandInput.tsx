@@ -13,6 +13,7 @@ export function CommandInput() {
     if (!trimmed || !ready) return;
     submit(trimmed, scope.trim() || undefined);
     setText("");
+    setScope("");
   };
 
   return (
