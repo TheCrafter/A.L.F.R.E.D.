@@ -9,6 +9,7 @@ export function WireInspector() {
     <section className="border-t border-hud-dim/30 bg-void/80">
       <button
         className="flex w-full items-center gap-2 px-4 py-1 text-[10px] uppercase tracking-[0.3em] text-hud-dim"
+        aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
         {open ? "▼" : "▶"} Wire · {wire.length}
