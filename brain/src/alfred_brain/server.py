@@ -11,6 +11,7 @@ from pydantic import BaseModel, ValidationError
 
 from alfred_protocol import (
     CommandAck, Error, KillSwitchAck, ServerHello, StatusResponse,
+    MemoryItem, MemoryListResponse, MemoryAck, MemoryFormed, MemoryRemoved,
 )
 
 from . import SERVER_NAME, SERVER_VERSION
@@ -31,6 +32,15 @@ from .tools.echo import EchoTool
 from .tools.registry import ToolRegistry
 
 SUPPORTED_PROTOCOL_VERSION = 1
+
+
+def memory_item(rec) -> MemoryItem:
+    status = rec.status if rec.status in ("provisional", "confirmed") else "confirmed"
+    return MemoryItem(
+        id=rec.id, text=rec.text, title=rec.title, type=rec.type,
+        tags=list(rec.tags), status=status, created=rec.created,
+        updated=rec.updated, links=list(rec.links),
+    )
 
 
 class ModelSelect(BaseModel):
@@ -250,6 +260,38 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
                         corr=mid, halted=True)))
                 elif kind == "status.request":
                     q.put_nowait(_status(mid))
+                elif kind == "memory.list_request":
+                    want = msg.get("status")
+                    recs = sorted(memory.all(), key=lambda r: r.created, reverse=True)
+                    items = [memory_item(r) for r in recs
+                             if want is None or r.status == want]
+                    q.put_nowait(dump(MemoryListResponse(
+                        v=1, id=new_id(), ts=now_ts(), type="memory.list_response",
+                        corr=mid, items=items)))
+                elif kind == "memory.edit":
+                    rec = memory.update(
+                        msg.get("mem_id", ""),
+                        status=msg.get("status"), tags=msg.get("tags"))
+                    if rec is None:
+                        q.put_nowait(dump(MemoryAck(
+                            v=1, id=new_id(), ts=now_ts(), type="memory.ack",
+                            corr=mid, ok=False, error="memory not found")))
+                    else:
+                        q.put_nowait(dump(MemoryAck(
+                            v=1, id=new_id(), ts=now_ts(), type="memory.ack",
+                            corr=mid, ok=True)))
+                        bus.publish(dump(MemoryFormed(
+                            v=1, id=new_id(), ts=now_ts(), type="memory.formed",
+                            item=memory_item(rec), op="update")))
+                elif kind == "memory.delete":
+                    ok = memory.forget(msg.get("mem_id", ""))
+                    q.put_nowait(dump(MemoryAck(
+                        v=1, id=new_id(), ts=now_ts(), type="memory.ack",
+                        corr=mid, ok=ok, **({} if ok else {"error": "memory not found"}))))
+                    if ok:
+                        bus.publish(dump(MemoryRemoved(
+                            v=1, id=new_id(), ts=now_ts(), type="memory.removed",
+                            mem_id=msg.get("mem_id", ""))))
                 else:
                     q.put_nowait(dump(Error(
                         v=1, id=new_id(), ts=now_ts(), type="error", corr=mid,
