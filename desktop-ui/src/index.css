@@ -38,3 +38,56 @@ body {
     box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.85);
   }
 }
+
+/* ---- AlfredCore reactor ---------------------------------------------------
+   State drives colour (--core), rotation speed (--spin) and pulse rate
+   (--pulse). The core feels calm when idle, agitated amber when thinking,
+   and pulses quickly (as if speaking) while a reply streams. ------------- */
+.alfred-core {
+  --core: var(--color-hud);
+  --spin: 30s;
+  --pulse: 5s;
+}
+.alfred-core[data-state="offline"]  { --core: var(--color-hud-dim); --spin: 64s; --pulse: 7s; }
+.alfred-core[data-state="idle"]     { --core: var(--color-hud);     --spin: 32s; --pulse: 5s; }
+.alfred-core[data-state="thinking"] { --core: var(--color-amber);   --spin: 13s; --pulse: 2.1s; }
+.alfred-core[data-state="speaking"] { --core: var(--color-hud);     --spin: 17s; --pulse: 1.1s; }
+.alfred-core[data-state="error"]    { --core: var(--color-danger);  --spin: 44s; --pulse: 3s; }
+
+.core-stage { position: relative; aspect-ratio: 1; width: clamp(176px, 30vh, 300px); }
+/* color drives every `currentColor` stroke/stop in the SVG, so state colour
+   flows through one custom property instead of unresolved var() attributes. */
+.core-svg { width: 100%; height: 100%; overflow: visible; display: block; color: var(--core); }
+.core-svg .spin     { transform-box: view-box; transform-origin: 150px 150px; animation: core-spin var(--spin) linear infinite; }
+.core-svg .spin-rev { transform-box: view-box; transform-origin: 150px 150px; animation: core-spin var(--spin) linear infinite reverse; }
+.core-svg .spin-fast{ transform-box: view-box; transform-origin: 150px 150px; animation: core-spin calc(var(--spin) * 0.55) linear infinite; }
+
+.core-halo {
+  position: absolute;
+  inset: 6%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in oklab, var(--core) 50%, transparent) 0%,
+    transparent 60%
+  );
+  filter: blur(8px);
+  animation: core-breathe var(--pulse) ease-in-out infinite;
+  pointer-events: none;
+}
+.core-breathe { transform-box: view-box; transform-origin: 150px 150px; animation: core-breathe var(--pulse) ease-in-out infinite; }
+
+@keyframes core-spin { to { transform: rotate(360deg); } }
+@keyframes core-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.985); }
+  50%      { opacity: 1;    transform: scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-svg .spin,
+  .core-svg .spin-rev,
+  .core-svg .spin-fast,
+  .core-halo,
+  .core-breathe { animation: none; }
+  .core-halo { opacity: 0.8; }
+}

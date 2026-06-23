@@ -1,4 +1,5 @@
 import { ConnectionBar } from "./components/ConnectionBar";
+import { AlfredCore } from "./components/AlfredCore";
 import { EventStream } from "./components/EventStream";
 import { CommandInput } from "./components/CommandInput";
 import { StatusPanel } from "./components/StatusPanel";
@@ -13,6 +14,7 @@ export default function App() {
         <ConnectionBar />
         <div className="flex min-h-0 flex-1">
           <div className="flex min-h-0 flex-1 flex-col">
+            <AlfredCore />
             <EventStream />
             <CommandInput />
           </div>
