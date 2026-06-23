@@ -6,7 +6,7 @@ import {
   type ServerInfo,
   type WireEntry,
 } from "../protocol/client";
-import { fetchStatus } from "../protocol/status";
+import { fetchStatus, httpBaseFromWs } from "../protocol/status";
 import { openTurn, applyMessage, type Turn } from "./turns";
 
 const WIRE_LIMIT = 500;
@@ -16,13 +16,11 @@ export interface AppState {
   server?: ServerInfo;
   lastError?: string;
   url: string;
-  baseUrl: string;
   turns: Turn[];
   status?: StatusResponse;
   statusError?: string;
   wire: WireEntry[];
   setUrl: (url: string) => void;
-  setBaseUrl: (url: string) => void;
   connect: () => void;
   disconnect: () => void;
   submit: (text: string, scopeOverride?: string) => void;
@@ -45,12 +43,10 @@ export function createStore(
   return create<AppState>((set, get) => ({
     phase: "idle",
     url: "ws://127.0.0.1:8765/ws",
-    baseUrl: "http://127.0.0.1:8765",
     turns: [],
     wire: [],
 
     setUrl: (url) => set({ url }),
-    setBaseUrl: (baseUrl) => set({ baseUrl }),
 
     connect: () => {
       client?.disconnect();
@@ -83,7 +79,7 @@ export function createStore(
 
     refreshStatus: async () => {
       try {
-        const status = await statusFn(get().baseUrl);
+        const status = await statusFn(httpBaseFromWs(get().url));
         set({ status, statusError: undefined });
       } catch (err) {
         set({ statusError: err instanceof Error ? err.message : String(err) });

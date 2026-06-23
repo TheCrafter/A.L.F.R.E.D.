@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fetchStatus, statusUrlFor } from "./status";
+import { fetchStatus, statusUrlFor, httpBaseFromWs } from "./status";
 
 const okStatus = {
   v: 1, id: "s", ts: "2026-06-23T00:00:00Z", type: "status.response",
@@ -29,6 +29,21 @@ describe("fetchStatus", () => {
     await expect(
       fetchStatus("http://127.0.0.1:8765", { get: fakeGet({}, false), tauri: true }),
     ).rejects.toThrow();
+  });
+});
+
+describe("httpBaseFromWs", () => {
+  it("derives the http origin from a ws url, dropping the /ws path", () => {
+    expect(httpBaseFromWs("ws://127.0.0.1:8766/ws")).toBe("http://127.0.0.1:8766");
+  });
+  it("maps wss to https", () => {
+    expect(httpBaseFromWs("wss://alfred.example.com/ws")).toBe("https://alfred.example.com");
+  });
+  it("preserves a custom port and host", () => {
+    expect(httpBaseFromWs("ws://localhost:9001/ws")).toBe("http://localhost:9001");
+  });
+  it("returns the input unchanged when it is not a valid url", () => {
+    expect(httpBaseFromWs("not a url")).toBe("not a url");
   });
 });
 
