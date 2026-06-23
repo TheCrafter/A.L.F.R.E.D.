@@ -25,7 +25,7 @@ export function ConnectionBar() {
       <span
         className={`h-3 w-3 rounded-full ${DOT[phase] ?? "bg-hud-dim"} ${["connecting", "handshaking", "ready", "reconnecting"].includes(phase) ? "animate-pulse" : ""}`}
       />
-      <span className="text-lg font-bold tracking-[0.3em] text-hud">ALFRED</span>
+      <span className="text-lg font-bold tracking-tight text-hud">A.L.F.R.E.D.</span>
       <input
         className="w-72 rounded bg-void px-2 py-1 text-xs text-hud outline-none placeholder:text-hud-dim"
         value={url}

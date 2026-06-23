@@ -138,7 +138,7 @@ export function AlfredCore() {
       </div>
 
       <div className="flex items-center gap-2.5 text-xs uppercase tracking-[0.5em]" style={{ color: "var(--core)" }}>
-        <span className="text-hud-dim">ALFRED</span>
+        <span className="tracking-tight text-hud-dim">A.L.F.R.E.D.</span>
         <span>{LABEL[state]}</span>
       </div>
 
