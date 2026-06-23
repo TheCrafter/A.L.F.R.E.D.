@@ -1,4 +1,4 @@
-import type { Message, ServerHello } from "@alfred/protocol";
+import type { Message } from "@alfred/protocol";
 import { validateMessage } from "./validator";
 
 export type ConnectionPhase =
@@ -50,15 +50,10 @@ interface EventMap {
   wire: (w: WireEntry) => void;
 }
 
-let counter = 0;
-function uid(prefix: string): string {
-  counter += 1;
-  return `${prefix}-${counter}-${Math.floor(Math.random() * 1_000_000)}`;
-}
-
 export class ProtocolClient {
   protected ws: WebSocket | null = null;
   private phase: ConnectionPhase = "idle";
+  private counter = 0;
   private readonly handlers: { [K in keyof EventMap]: Set<EventMap[K]> } = {
     phase: new Set(),
     message: new Set(),
@@ -83,6 +78,11 @@ export class ProtocolClient {
     this.reconnect = options.reconnect ?? true;
     this.backoffBaseMs = options.backoffBaseMs ?? 500;
     this.backoffMaxMs = options.backoffMaxMs ?? 8000;
+  }
+
+  private uid(prefix: string): string {
+    this.counter += 1;
+    return `${prefix}-${this.counter}-${Math.floor(Math.random() * 1_000_000)}`;
   }
 
   on<K extends keyof EventMap>(event: K, handler: EventMap[K]): () => void {
@@ -164,13 +164,12 @@ export class ProtocolClient {
 
   protected onValidMessage(msg: Message): void {
     if (msg.type === "server.hello") {
-      const hello = msg as ServerHello;
       this.setPhase("ready", {
         server: {
-          serverName: hello.server_name,
-          serverVersion: hello.server_version,
-          sessionId: hello.session_id,
-          protocolVersion: hello.protocol_version,
+          serverName: msg.server_name,
+          serverVersion: msg.server_version,
+          sessionId: msg.session_id,
+          protocolVersion: msg.protocol_version,
         },
       });
     } else if (msg.type === "error" && msg.code === "unsupported_version") {
@@ -183,7 +182,7 @@ export class ProtocolClient {
   }
 
   protected envelope(): { v: 1; id: string; ts: string } {
-    return { v: 1, id: uid("ui"), ts: new Date().toISOString() };
+    return { v: 1, id: this.uid("ui"), ts: new Date().toISOString() };
   }
 
   protected sendMessage(msg: Message): void {
@@ -199,7 +198,7 @@ export class ProtocolClient {
     result: { valid: boolean; errors?: string },
   ): void {
     this.emit("wire", {
-      entryId: uid("wire"),
+      entryId: this.uid("wire"),
       direction,
       type,
       raw,
