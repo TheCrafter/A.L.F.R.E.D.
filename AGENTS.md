@@ -14,7 +14,7 @@ delivery.
 | Path | Stack | Status |
 |------|-------|--------|
 | `protocol/` | JSON Schema → Pydantic + TS | ✅ **Phase 0 done** — the shared WebSocket/HTTP contract; single source of truth |
-| `brain/` | Python | ✅ **Phase 1 done** — WS/HTTP server, event bus, reasoning provider (Gemini/scripted), agent loop, kill switch, persona |
+| `brain/` | Python | ✅ **Phase 1 done** — WS/HTTP server, event bus, reasoning provider (Gemini/scripted), agent loop, kill switch, persona. **Phase 2 memory formation implemented** — short-term buffer (WorkingMemory), LLM-backed extraction (Extractor) with provisional/confirmed routing, wired into server with shutdown flush; review panel deferred. |
 | `desktop-ui/` | TypeScript (Tauri/React) | Phase 4 — dashboard MVP built (event stream, command, status, kill switch, wire inspector); voice + memory panel deferred |
 | `adapters/telegram/` | TS/Python | Phase 5 (remote channel) — not yet started |
 | `docs/` | Markdown | specs + plans |
