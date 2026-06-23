@@ -1,3 +1,4 @@
+import logging
 import os
 
 import uvicorn
@@ -20,6 +21,13 @@ def load_settings(*, bootstrap: bool = True) -> Settings:
 
 def main() -> None:
     settings = load_settings()
+    # Configure app logging so alfred_brain.* INFO logs (e.g. memory extraction)
+    # are emitted — uvicorn only configures its own loggers, leaving ours silent.
+    logging.basicConfig(
+        level=settings.log_level,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    logging.getLogger("alfred_brain").setLevel(settings.log_level)
     uvicorn.run(create_app(settings), host=settings.host, port=settings.port)
 
 
