@@ -72,3 +72,62 @@ def test_update_rewrites_in_place(tmp_path):
 def test_update_unknown_id_returns_none(tmp_path):
     v = Vault(tmp_path / "vault")
     assert v.update("nope", text="x") is None
+
+
+def test_filename_is_safe_title_not_full_text(tmp_path):
+    v = Vault(tmp_path / "vault")
+    rec = v.write("Dimitris is 32 and lives in Greece.",
+                  title="Dimitris - age and location")
+    assert rec.path.name == "Dimitris - age and location.md"
+    assert rec.title == "Dimitris - age and location"
+
+
+def test_illegal_filename_chars_stripped(tmp_path):
+    v = Vault(tmp_path / "vault")
+    rec = v.write("x", title='a/b:c*d?e"f<g>h|i')
+    assert not any(c in rec.path.name for c in '\\/:*?"<>|')
+
+
+def test_filename_collision_gets_numeric_suffix(tmp_path):
+    v = Vault(tmp_path / "vault")
+    a = v.write("first", title="Same Title")
+    b = v.write("second", title="Same Title")
+    assert a.path.name == "Same Title.md"
+    assert b.path.name == "Same Title 2.md"
+    assert a.id != b.id
+
+
+def test_empty_title_derives_from_text(tmp_path):
+    v = Vault(tmp_path / "vault")
+    rec = v.write("alpha beta gamma delta epsilon zeta eta theta iota")
+    assert rec.title == "alpha beta gamma delta epsilon zeta eta theta"
+
+
+def test_links_render_and_round_trip(tmp_path):
+    v = Vault(tmp_path / "vault")
+    rec = v.write("Dimitris is 32.", title="Dimitris age",
+                  links=["Dimitris", "Greece"])
+    raw = rec.path.read_text(encoding="utf-8")
+    assert "Related: [[Dimitris]], [[Greece]]" in raw
+    again = v.read(rec.path)
+    assert again.text == "Dimitris is 32."   # Related line excluded from text
+    assert again.links == ["Dimitris", "Greece"]
+    assert again.title == "Dimitris age"
+
+
+def test_no_links_no_related_line(tmp_path):
+    v = Vault(tmp_path / "vault")
+    rec = v.write("plain fact", title="Plain")
+    raw = rec.path.read_text(encoding="utf-8")
+    assert "Related:" not in raw
+    assert v.read(rec.path).links == []
+
+
+def test_update_keeps_filename_stable(tmp_path):
+    v = Vault(tmp_path / "vault")
+    rec = v.write("old", title="Original Title")
+    out = v.update(rec.id, text="new", title="Totally Different", links=["Greece"])
+    assert out is not None
+    assert out.path.name == "Original Title.md"   # NOT renamed
+    assert out.title == "Totally Different"
+    assert out.links == ["Greece"]

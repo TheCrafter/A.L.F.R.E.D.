@@ -10,6 +10,27 @@ import yaml
 from .record import MemoryRecord
 
 _FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
+_ILLEGAL = re.compile(r'[\\/:*?"<>|]')
+_RELATED = re.compile(r"\n+Related:\s*(.+)$", re.DOTALL)
+
+
+def _safe_filename(title: str) -> str:
+    name = _ILLEGAL.sub("", title)
+    name = re.sub(r"\s+", " ", name).strip()
+    return name[:80].strip() or "memory"
+
+
+def _derive_title(text: str) -> str:
+    return " ".join(text.split()[:8])[:60].strip() or "memory"
+
+
+def _split_body(body: str) -> tuple[str, list[str]]:
+    m = _RELATED.search(body)
+    if not m:
+        return body, []
+    text = body[: m.start()].strip()
+    links = re.findall(r"\[\[(.+?)\]\]", m.group(1))
+    return text, links
 
 
 def _new_id() -> str:
@@ -37,25 +58,37 @@ class Vault:
         self._dir = Path(vault_dir) / "memories"
 
     def write(self, text: str, *, type: str = "note",
-              tags: list[str] | None = None,
-              status: str = "confirmed") -> MemoryRecord:
+              tags: list[str] | None = None, status: str = "confirmed",
+              title: str = "", links: list[str] | None = None) -> MemoryRecord:
         self._dir.mkdir(parents=True, exist_ok=True)
         rec = MemoryRecord(
             id=_new_id(), text=text, type=type, tags=list(tags or []),
-            status=status, created=_now(),
-            path=Path(),  # set below
+            status=status, created=_now(), path=Path(),
+            title=(title.strip() or _derive_title(text)), links=list(links or []),
         )
-        rec.path = self._dir / f"{_slugify(text)}-{rec.id}.md"
+        rec.path = self._unique_path(rec.title)
         rec.path.write_text(self._render(rec), encoding="utf-8")
         return rec
 
+    def _unique_path(self, title: str) -> Path:
+        base = _safe_filename(title)
+        path = self._dir / f"{base}.md"
+        n = 2
+        while path.exists():
+            path = self._dir / f"{base} {n}.md"
+            n += 1
+        return path
+
     def _render(self, rec: MemoryRecord) -> str:
         meta = {"id": rec.id, "created": rec.created, "type": rec.type,
-                "tags": rec.tags, "status": rec.status}
+                "tags": rec.tags, "status": rec.status, "title": rec.title}
         if rec.updated:
             meta["updated"] = rec.updated
         front = yaml.safe_dump(meta, sort_keys=False, allow_unicode=True)
-        return f"---\n{front}---\n\n{rec.text}\n"
+        body = rec.text
+        if rec.links:
+            body += "\n\nRelated: " + ", ".join(f"[[{l}]]" for l in rec.links)
+        return f"---\n{front}---\n\n{body}\n"
 
     def read(self, path: Path) -> MemoryRecord:
         raw = Path(path).read_text(encoding="utf-8")
@@ -63,12 +96,14 @@ class Vault:
         if not m:
             raise ValueError(f"not a memory note (no frontmatter): {path}")
         meta = yaml.safe_load(m.group(1)) or {}
+        text, links = _split_body(m.group(2).strip())
         return MemoryRecord(
-            id=str(meta.get("id", "")), text=m.group(2).strip(),
+            id=str(meta.get("id", "")), text=text,
             type=str(meta.get("type", "note")), tags=list(meta.get("tags") or []),
             status=str(meta.get("status", "active")),
             created=str(meta.get("created", "")), path=Path(path),
             updated=(str(meta["updated"]) if meta.get("updated") else None),
+            title=str(meta.get("title", "")), links=links,
         )
 
     def all(self) -> list[MemoryRecord]:
@@ -77,8 +112,9 @@ class Vault:
         return [self.read(p) for p in sorted(self._dir.glob("*.md"))]
 
     def update(self, id: str, *, text: str | None = None, type: str | None = None,
-               tags: list[str] | None = None,
-               status: str | None = None) -> MemoryRecord | None:
+               tags: list[str] | None = None, status: str | None = None,
+               title: str | None = None,
+               links: list[str] | None = None) -> MemoryRecord | None:
         for rec in self.all():
             if rec.id != id:
                 continue
@@ -90,8 +126,12 @@ class Vault:
                 rec.tags = list(tags)
             if status is not None:
                 rec.status = status
+            if title is not None:
+                rec.title = title
+            if links is not None:
+                rec.links = list(links)
             rec.updated = _now()
-            rec.path.write_text(self._render(rec), encoding="utf-8")
+            rec.path.write_text(self._render(rec), encoding="utf-8")  # same path
             return rec
         return None
 

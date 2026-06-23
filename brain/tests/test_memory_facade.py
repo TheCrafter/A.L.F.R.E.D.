@@ -67,3 +67,13 @@ def test_update_unknown_id_returns_none(tmp_path):
     from tests.test_memory_index import FakeEmbedder
     mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
     assert mem.update("missing", text="x") is None
+
+
+def test_remember_with_title_and_links(tmp_path):
+    from alfred_brain.memory import VaultMemory
+    from tests.test_memory_index import FakeEmbedder
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    rec = mem.remember("Dimitris is 32.", title="Dimitris age",
+                       links=["Dimitris"])
+    assert rec.title == "Dimitris age" and rec.links == ["Dimitris"]
+    assert rec.path.name == "Dimitris age.md"

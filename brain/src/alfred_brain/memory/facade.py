@@ -23,9 +23,10 @@ class VaultMemory:
             self._index.add(rec.id, rec.text)
 
     def remember(self, text: str, *, type: str = "note",
-                 tags: list[str] | None = None,
-                 status: str = "confirmed") -> MemoryRecord:
-        rec = self._vault.write(text, type=type, tags=tags, status=status)
+                 tags: list[str] | None = None, status: str = "confirmed",
+                 title: str = "", links: list[str] | None = None) -> MemoryRecord:
+        rec = self._vault.write(text, type=type, tags=tags, status=status,
+                                title=title, links=links)
         self._records[rec.id] = rec
         self._index.add(rec.id, rec.text)
         return rec
@@ -35,9 +36,11 @@ class VaultMemory:
                 if i in self._records]
 
     def update(self, id: str, *, text: str | None = None, type: str | None = None,
-               tags: list[str] | None = None,
-               status: str | None = None) -> MemoryRecord | None:
-        rec = self._vault.update(id, text=text, type=type, tags=tags, status=status)
+               tags: list[str] | None = None, status: str | None = None,
+               title: str | None = None,
+               links: list[str] | None = None) -> MemoryRecord | None:
+        rec = self._vault.update(id, text=text, type=type, tags=tags,
+                                 status=status, title=title, links=links)
         if rec is None:
             return None
         self._records[rec.id] = rec
