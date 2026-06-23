@@ -267,6 +267,7 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
 
     @app.on_event("shutdown")
     async def _flush_memory() -> None:
+        await agent.drain_extractions()
         await extractor.extract(working.drain())
 
     return app

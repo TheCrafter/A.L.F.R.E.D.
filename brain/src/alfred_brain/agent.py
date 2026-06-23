@@ -72,6 +72,12 @@ class AgentLoop:
     def set_recall_top_k(self, n: int) -> None:
         self._recall_top_k = n
 
+    async def drain_extractions(self) -> None:
+        """Await any in-flight fire-and-forget extraction tasks (used on shutdown)."""
+        tasks = list(self._extract_tasks)
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
     async def run(self, *, corr: str, text: str, publish: Callable[[dict], None]) -> None:
         def emit(model: AgentThought | AgentMessage | AgentAction | AgentTurnComplete) -> None:
             publish(dump(model))
@@ -135,7 +141,9 @@ class AgentLoop:
 
             if self._working is not None:
                 self._working.append("user", text)
-                self._working.append("assistant", "".join(assistant_parts))
+                reply = "".join(assistant_parts)
+                if reply:
+                    self._working.append("assistant", reply)
                 if self._extractor is not None:
                     batch = self._working.take_batch()
                     if batch:
