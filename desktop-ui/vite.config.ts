@@ -19,6 +19,13 @@ export default defineConfig({
       "@alfred/protocol-schema": protocolSchema,
     },
   },
+  // @tauri-apps/plugin-http is only reached via a runtime-gated dynamic import
+  // (protocol/http.ts), so Vite would otherwise skip it at cold start and
+  // re-optimize on the first status fetch inside the webview — which rejects the
+  // in-flight dynamic import. Pre-bundle it so the chunk is ready up front.
+  optimizeDeps: {
+    include: ["@tauri-apps/plugin-http"],
+  },
   server: {
     port: 1420,
     strictPort: true,
