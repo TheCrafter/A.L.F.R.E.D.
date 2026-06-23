@@ -1,4 +1,5 @@
 import { useStore } from "../store/store";
+import { MARK } from "../mark";
 
 const DOT: Record<string, string> = {
   ready: "bg-safe",
@@ -26,6 +27,9 @@ export function ConnectionBar() {
         className={`h-3 w-3 rounded-full ${DOT[phase] ?? "bg-hud-dim"} ${["connecting", "handshaking", "ready", "reconnecting"].includes(phase) ? "animate-pulse" : ""}`}
       />
       <span className="text-lg font-bold tracking-tight text-hud">A.L.F.R.E.D.</span>
+      <span className="rounded border border-hud-dim/40 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-hud-dim">
+        {MARK}
+      </span>
       <input
         className="w-72 rounded bg-void px-2 py-1 text-xs text-hud outline-none placeholder:text-hud-dim"
         value={url}
