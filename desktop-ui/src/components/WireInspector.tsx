@@ -1,15 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../store/store";
 
-function rawPreview(raw: unknown): string {
-  if (raw !== null && typeof raw === "object" && !Array.isArray(raw)) {
-    const { type: _type, ...rest } = raw as Record<string, unknown>;
-    void _type;
-    return JSON.stringify(rest);
-  }
-  return JSON.stringify(raw);
-}
-
 export function WireInspector() {
   const wire = useStore((s) => s.wire);
   const [open, setOpen] = useState(false);
@@ -33,7 +24,7 @@ export function WireInspector() {
                 {e.valid ? "✓" : "✗"}
               </span>
               <span className="text-hud-dim">{e.type}</span>
-              <span className="truncate text-hud-dim/60">{rawPreview(e.raw)}</span>
+              <span className="truncate text-hud-dim/60">{JSON.stringify(e.raw)}</span>
             </div>
           ))}
         </div>

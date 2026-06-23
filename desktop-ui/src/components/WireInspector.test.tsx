@@ -18,7 +18,16 @@ describe("WireInspector", () => {
     render(<WireInspector />);
     expect(screen.queryByText(/server\.hello/)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: /wire/i }));
-    expect(screen.getByText(/server\.hello/)).toBeInTheDocument();
-    expect(screen.getByText(/command\.submit/)).toBeInTheDocument();
+    expect(screen.getAllByText(/server\.hello/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/command\.submit/).length).toBeGreaterThan(0);
+  });
+
+  it("shows the failure badge for invalid entries", async () => {
+    useStore.setState({
+      wire: [{ entryId: "w3", direction: "in", type: "error", raw: { type: "error" }, valid: false, at: "t" }],
+    });
+    render(<WireInspector />);
+    await userEvent.click(screen.getByRole("button", { name: /wire/i }));
+    expect(screen.getByText("✗")).toBeInTheDocument();
   });
 });
