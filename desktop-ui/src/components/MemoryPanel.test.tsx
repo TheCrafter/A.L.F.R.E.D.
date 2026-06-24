@@ -24,6 +24,7 @@ describe("MemoryPanel", () => {
       memoryFilter: "all",
       confirmMemory: vi.fn(),
       removeMemory: vi.fn(),
+      retagMemory: vi.fn(),
     } as Partial<ReturnType<typeof useStore.getState>> as Parameters<typeof useStore.setState>[0]);
   });
 
@@ -76,5 +77,39 @@ describe("MemoryPanel", () => {
     render(<MemoryPanel />);
     expect(screen.queryByText("Confirmed memory")).toBeNull();
     expect(screen.getByText("Provisional memory")).toBeInTheDocument();
+  });
+
+  it("renders existing tags as chips", () => {
+    useStore.setState({
+      memories: { "1": { ...mkMemory("1", "confirmed", "Mem"), tags: ["alpha", "beta"] } },
+      retagMemory: vi.fn(),
+    });
+    render(<MemoryPanel />);
+    expect(screen.getByText("alpha")).toBeInTheDocument();
+    expect(screen.getByText("beta")).toBeInTheDocument();
+  });
+
+  it("typing a tag and pressing Enter calls retagMemory with the new tag appended", () => {
+    const retagMemory = vi.fn();
+    useStore.setState({
+      memories: { "1": { ...mkMemory("1", "confirmed", "Mem"), tags: ["existing"] } },
+      retagMemory,
+    });
+    render(<MemoryPanel />);
+    const input = screen.getByPlaceholderText("add tag…");
+    fireEvent.change(input, { target: { value: "new" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(retagMemory).toHaveBeenCalledWith("1", ["existing", "new"]);
+  });
+
+  it("clicking × on a tag chip calls retagMemory without that tag", () => {
+    const retagMemory = vi.fn();
+    useStore.setState({
+      memories: { "1": { ...mkMemory("1", "confirmed", "Mem"), tags: ["only"] } },
+      retagMemory,
+    });
+    render(<MemoryPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "remove tag only" }));
+    expect(retagMemory).toHaveBeenCalledWith("1", []);
   });
 });

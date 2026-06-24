@@ -64,6 +64,19 @@ describe("ProtocolClient send helpers", () => {
     expect("tags" in sent).toBe(false);
   });
 
+  it("editMemory with tags:[] sends a frame WITH tags present (can clear tags)", () => {
+    const client = new ProtocolClient({ url: "ws://x/ws", WebSocketCtor: Ctor, reconnect: false });
+    client.connect();
+    const ws = lastSocket();
+    ws.open();
+    ws.receive(serverHello);
+    client.editMemory("abc", { tags: [] });
+    const sent = JSON.parse(ws.sent.at(-1)!);
+    expect(sent.type).toBe("memory.edit");
+    expect("tags" in sent).toBe(true);
+    expect(sent.tags).toEqual([]);
+  });
+
   it("deleteMemory sends a memory.delete with mem_id", () => {
     const client = new ProtocolClient({ url: "ws://x/ws", WebSocketCtor: Ctor, reconnect: false });
     client.connect();

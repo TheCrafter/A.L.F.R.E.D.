@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useStore } from "../store/store";
 import type { MemoryItem } from "@alfred/protocol";
 
@@ -14,9 +15,35 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function TagInput({
+  itemId, currentTags, retagMemory,
+}: {
+  itemId: string;
+  currentTags: string[];
+  retagMemory: (id: string, tags: string[]) => void;
+}) {
+  const [value, setValue] = useState("");
+  return (
+    <input
+      className="mt-1 w-full rounded border border-hud-dim/30 bg-transparent px-1 py-0.5 text-[10px] text-hud-dim placeholder:text-hud-dim/50"
+      placeholder="add tag…"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter") return;
+        const tag = value.trim();
+        if (!tag || currentTags.includes(tag)) return;
+        retagMemory(itemId, [...currentTags, tag]);
+        setValue("");
+      }}
+    />
+  );
+}
+
 function MemoryCard({ item }: { item: MemoryItem }) {
   const confirmMemory = useStore((s) => s.confirmMemory);
   const removeMemory = useStore((s) => s.removeMemory);
+  const retagMemory = useStore((s) => s.retagMemory);
   return (
     <div className="rounded border border-hud-dim/30 bg-panel/60 p-2">
       <div className="flex items-center justify-between gap-2">
@@ -29,6 +56,21 @@ function MemoryCard({ item }: { item: MemoryItem }) {
           {item.links.join(" · ")}
         </p>
       )}
+      {item.tags.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {item.tags.map((tag) => (
+            <span key={tag} className="flex items-center gap-0.5 rounded border border-hud-dim/30 px-1 py-0.5 text-[10px] text-hud-dim">
+              {tag}
+              <button
+                aria-label={`remove tag ${tag}`}
+                className="text-[10px] leading-none text-hud-dim hover:text-danger"
+                onClick={() => retagMemory(item.id, item.tags.filter((t) => t !== tag))}
+              >×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <TagInput itemId={item.id} currentTags={item.tags} retagMemory={retagMemory} />
       <div className="mt-2 flex gap-2">
         {item.status === "provisional" && (
           <button className="text-[10px] uppercase tracking-wider text-safe"

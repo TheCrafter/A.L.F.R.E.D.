@@ -241,7 +241,7 @@ export class ProtocolClient {
       type: "memory.edit",
       mem_id: memId,
       ...(patch.status ? { status: patch.status } : {}),
-      ...(patch.tags ? { tags: patch.tags } : {}),
+      ...(patch.tags !== undefined ? { tags: patch.tags } : {}),
     };
     this.sendMessage(msg);
     return msg.id;
