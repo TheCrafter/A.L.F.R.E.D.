@@ -45,6 +45,7 @@ recall_top_k = {g("ALFRED_RECALL_TOP_K", "5")}   # integer >= 1   (hot-reloadabl
 window_messages = {g("ALFRED_WINDOW_MESSAGES", "20")}   # short-term: last N user/assistant messages   (hot-reloadable)
 # extract_model = ""   # [*] model for the extraction pass; empty = use the active provider's model
 extract_recall_k = {g("ALFRED_EXTRACT_RECALL_K", "5")}   # memories shown to the extractor for dedup   (hot-reloadable)
+# user_name = ""   # [*] your name, so memories about you link to [[name]] instead of a generic 'User'
 """
 
 

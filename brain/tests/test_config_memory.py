@@ -61,3 +61,22 @@ def test_formation_from_toml(tmp_path, monkeypatch):
     flat = read_flat_toml(p)
     assert flat["memory_window_messages"] == 12
     assert flat["memory_extract_recall_k"] == 2
+
+
+def test_user_name_default_empty(monkeypatch):
+    monkeypatch.delenv("ALFRED_USER_NAME", raising=False)
+    from alfred_brain.config import Settings
+    assert Settings(_env_file=None).memory_user_name == ""
+
+
+def test_user_name_from_env(monkeypatch):
+    monkeypatch.setenv("ALFRED_USER_NAME", "Dimitris")
+    from alfred_brain.config import Settings
+    assert Settings(_env_file=None).memory_user_name == "Dimitris"
+
+
+def test_user_name_from_toml(tmp_path):
+    from alfred_brain.config.toml_source import read_flat_toml
+    p = tmp_path / "config.toml"
+    p.write_text("[memory]\nuser_name = \"Dimitris\"\n", encoding="utf-8")
+    assert read_flat_toml(p)["memory_user_name"] == "Dimitris"

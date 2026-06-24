@@ -23,6 +23,7 @@ ENV_ALIASES = {
     "memory_window_messages": "ALFRED_WINDOW_MESSAGES",
     "memory_extract_model": "ALFRED_EXTRACT_MODEL",
     "memory_extract_recall_k": "ALFRED_EXTRACT_RECALL_K",
+    "memory_user_name": "ALFRED_USER_NAME",
 }
 
 
@@ -55,6 +56,7 @@ class Settings(BaseSettings):
     memory_extract_model: str = Field(default="", validation_alias="ALFRED_EXTRACT_MODEL")
     memory_extract_recall_k: int = Field(
         default=5, ge=1, validation_alias="ALFRED_EXTRACT_RECALL_K")
+    memory_user_name: str = Field(default="", validation_alias="ALFRED_USER_NAME")
 
     @classmethod
     def settings_customise_sources(
