@@ -53,8 +53,11 @@ EXTRACTION_SYSTEM = (
     "- List the \"entities\" it concerns as {name, type} with type one of "
     "person|place|org|project|topic. REUSE a KNOWN entity's exact name when it "
     "refers to the same thing, so notes link to the same hub.\n"
-    "- If the transcript confirms a tentative existing memory, \"update\" it with "
-    "confidence \"high\".\n\n"
+    "- Do NOT raise an existing memory's confidence or change its status unless the "
+    "user EXPLICITLY restates or reaffirms that fact in THIS transcript.\n"
+    "- Never refuse to store a durable fact. If a fact is sensitive (passwords, "
+    "credentials, account/IBAN numbers, financial or private identifiers), still "
+    "store it: set stakes \"high\" and add the tag \"sensitive\".\n\n"
     "Set \"confidence\" (high|low) by certainty, and \"stakes\" (low|high) by how "
     "much acting on it wrongly would matter (security, money, identity, "
     "irreversible actions are high).\n\n"
@@ -118,12 +121,24 @@ class Extractor:
 
     def __init__(self, provider: ReasoningProvider, memory: Memory,
                  *, recall_k: int = 5,
-                 on_formed: Callable[[MemoryRecord, str], None] | None = None) -> None:
+                 on_formed: Callable[[MemoryRecord, str], None] | None = None,
+                 user_name: str = "") -> None:
         self._provider = provider
         self._memory = memory
         self._recall_k = recall_k
         self._on_formed = on_formed
+        self._user_name = user_name
         self._lock = asyncio.Lock()
+
+    def _system_prompt(self) -> str:
+        if not self._user_name:
+            return EXTRACTION_SYSTEM
+        return (
+            EXTRACTION_SYSTEM
+            + f"\n\nThe user is named {self._user_name}. Link facts about the user "
+            f"to the [[{self._user_name}]] entity (type person); never use a "
+            "generic 'User' entity."
+        )
 
     def set_provider(self, provider: ReasoningProvider) -> None:
         self._provider = provider
@@ -142,7 +157,7 @@ class Extractor:
                 f"TRANSCRIPT:\n{transcript}")
         chunks: list[str] = []
         async for ev in self._provider.run_turn(
-            [TurnMessage(role="user", content=user)], [], EXTRACTION_SYSTEM
+            [TurnMessage(role="user", content=user)], [], self._system_prompt()
         ):
             if isinstance(ev, TextChunk):
                 chunks.append(ev.text)
@@ -176,6 +191,8 @@ class Extractor:
         for op in ops:
             try:
                 status = route_status(op.confidence, op.stakes)
+                if "sensitive" in op.tags:
+                    status = "provisional"
                 links = [self._memory.ensure_entity(e.name, e.type)
                          for e in op.entities if e.name.strip()]
                 if op.action == "add":

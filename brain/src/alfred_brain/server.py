@@ -79,7 +79,8 @@ def create_app(settings: Settings, provider: ReasoningProvider | None = None,
     working = WorkingMemory(window=settings.memory_window_messages)
     extractor = Extractor(_extraction_provider(settings, provider), memory,
                           recall_k=settings.memory_extract_recall_k,
-                          on_formed=_broadcast_formed)
+                          on_formed=_broadcast_formed,
+                          user_name=settings.memory_user_name)
     agent = AgentLoop(provider, registry, system_prompt(settings.persona_intensity),
                       settings.max_tool_iterations,
                       memory=memory, recall_top_k=settings.memory_recall_top_k,

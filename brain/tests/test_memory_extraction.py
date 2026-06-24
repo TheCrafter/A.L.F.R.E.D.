@@ -1,7 +1,7 @@
 import pytest
 
 from alfred_brain.memory import VaultMemory
-from alfred_brain.memory.extraction import EntityRef, Extractor, route_status, _parse_ops
+from alfred_brain.memory.extraction import EXTRACTION_SYSTEM, EntityRef, Extractor, route_status, _parse_ops
 from alfred_brain.providers.base import TextChunk, TurnMessage
 from tests.test_memory_index import FakeEmbedder
 
@@ -147,3 +147,53 @@ async def test_extract_calls_on_formed_per_applied_op(tmp_path):
         '"entities": [{"name": "Dimitris", "type": "person"}]}]}')
     await Extractor(prov, mem, on_formed=lambda rec, op: seen.append((rec.title, op))).extract(_batch())
     assert seen == [("Dimitris age", "add")]
+
+
+def test_extraction_system_no_autopromote_and_no_refuse():
+    low = EXTRACTION_SYSTEM.lower()
+    assert "never refuse" in low
+    assert "sensitive" in low
+    # the old auto-promote instruction is gone
+    assert "confirms a tentative existing memory" not in EXTRACTION_SYSTEM
+
+
+async def test_user_name_adds_identity_instruction(tmp_path):
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+
+    class _Capture:
+        name = "cap"
+        def __init__(self): self.system = None
+        async def run_turn(self, messages, tools, system):
+            self.system = system
+            yield TextChunk('{"operations": []}', final=True)
+
+    prov = _Capture()
+    await Extractor(prov, mem, user_name="Dimitris").extract(_batch())
+    assert "Dimitris" in prov.system
+    assert "User" in prov.system  # phrased as: never use a generic 'User' entity
+
+
+async def test_no_user_name_no_identity_instruction(tmp_path):
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+
+    class _Capture:
+        name = "cap"
+        def __init__(self): self.system = None
+        async def run_turn(self, messages, tools, system):
+            self.system = system
+            yield TextChunk('{"operations": []}', final=True)
+
+    prov = _Capture()
+    await Extractor(prov, mem).extract(_batch())   # no user_name
+    assert "named" not in prov.system.lower() or "the user is named" not in prov.system.lower()
+
+
+async def test_sensitive_tag_forces_provisional(tmp_path):
+    mem = VaultMemory(tmp_path / "vault", FakeEmbedder())
+    prov = _FakeProvider(
+        '{"operations": [{"action": "add", "text": "User IBAN is GR16 0110.", '
+        '"title": "User IBAN", "tags": ["sensitive"], '
+        '"confidence": "high", "stakes": "low"}]}')   # model wrongly said low stakes
+    applied = await Extractor(prov, mem).extract(_batch())
+    assert applied[0].status == "provisional"
+    assert "sensitive" in applied[0].tags
