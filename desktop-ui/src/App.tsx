@@ -3,6 +3,7 @@ import { AlfredCore } from "./components/AlfredCore";
 import { EventStream } from "./components/EventStream";
 import { CommandInput } from "./components/CommandInput";
 import { StatusPanel } from "./components/StatusPanel";
+import { MemoryPanel } from "./components/MemoryPanel";
 import { KillSwitch } from "./components/KillSwitch";
 import { WireInspector } from "./components/WireInspector";
 
@@ -20,7 +21,10 @@ export default function App() {
           </div>
           {/* AlfredCore is flex-1 and vertically centers the reactor; the event
               log sits as a bounded strip beneath it (see EventStream max-height). */}
-          <StatusPanel />
+          <div className="flex w-80 min-h-0 flex-col">
+            <StatusPanel />
+            <MemoryPanel />
+          </div>
         </div>
         <WireInspector />
         <div className="flex items-center justify-end border-t border-hud-dim/30 bg-panel/80 px-4 py-2">
