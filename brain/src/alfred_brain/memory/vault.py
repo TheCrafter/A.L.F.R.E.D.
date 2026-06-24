@@ -154,6 +154,13 @@ class Vault:
             f"---\n{front}---\n\n# {name}\n", encoding="utf-8")
         return stem
 
+    def delete_entity(self, stem: str) -> bool:
+        path = self._entities / f"{stem}.md"
+        if not path.exists():
+            return False
+        path.unlink()
+        return True
+
     def list_entities(self) -> list[tuple[str, str]]:
         if not self._entities.is_dir():
             return []

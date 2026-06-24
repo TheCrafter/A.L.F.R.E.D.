@@ -87,3 +87,31 @@ def test_facade_ensure_and_list_entities(tmp_path):
     assert mem.list_entities() == [("Alfred", "project")]
     # hubs are not facts -> not recalled / not in all()
     assert mem.all() == []
+
+
+def test_forget_gcs_orphan_entity(tmp_path):
+    mem = _mem(tmp_path)
+    stem = mem.ensure_entity("Berlin", "place")
+    rec = mem.remember("User may move to Berlin.", title="Berlin move", links=[stem])
+    mem.forget(rec.id)
+    assert ("Berlin", "place") not in mem.list_entities()  # orphan removed
+
+
+def test_forget_keeps_shared_entity(tmp_path):
+    mem = _mem(tmp_path)
+    d = mem.ensure_entity("Dimitris", "person")
+    a = mem.remember("Fact A about user.", title="A", links=[d])
+    mem.remember("Fact B about user.", title="B", links=[d])
+    mem.forget(a.id)
+    assert ("Dimitris", "person") in mem.list_entities()  # still referenced by B
+
+
+def test_update_gcs_dropped_orphan_link(tmp_path):
+    mem = _mem(tmp_path)
+    old = mem.ensure_entity("Berlin", "place")
+    new = mem.ensure_entity("Athens", "place")
+    rec = mem.remember("User may move to Berlin.", title="Move", links=[old])
+    mem.update(rec.id, text="User will move to Athens.", links=[new])
+    ents = dict(mem.list_entities())
+    assert "Berlin" not in ents      # dropped + orphaned -> GC'd
+    assert "Athens" in ents

@@ -35,10 +35,17 @@ class VaultMemory:
         return [self._records[i] for i, _ in self._index.search(query, k)
                 if i in self._records]
 
+    def _gc_entity(self, stem: str) -> None:
+        if any(stem in rec.links for rec in self._records.values()):
+            return
+        self._vault.delete_entity(stem)
+
     def update(self, id: str, *, text: str | None = None, type: str | None = None,
                tags: list[str] | None = None, status: str | None = None,
                title: str | None = None,
                links: list[str] | None = None) -> MemoryRecord | None:
+        old = self._records.get(id)
+        old_links = list(old.links) if old else []
         rec = self._vault.update(id, text=text, type=type, tags=tags,
                                  status=status, title=title, links=links)
         if rec is None:
@@ -47,13 +54,20 @@ class VaultMemory:
         if text is not None:
             self._index.remove(rec.id)
             self._index.add(rec.id, rec.text)
+        if links is not None:
+            for stem in old_links:
+                if stem not in rec.links:
+                    self._gc_entity(stem)
         return rec
 
     def forget(self, id: str) -> bool:
+        rec = self._records.get(id)
         if not self._vault.delete(id):
             return False
         self._records.pop(id, None)
         self._index.remove(id)
+        for stem in (rec.links if rec else []):
+            self._gc_entity(stem)
         return True
 
     def all(self) -> list[MemoryRecord]:

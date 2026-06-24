@@ -205,3 +205,11 @@ def test_entity_name_with_brackets_sanitized(tmp_path):
     assert "[" not in stem and "]" not in stem
     hub = tmp_path / "vault" / "entities" / f"{stem}.md"
     assert hub.exists()
+
+
+def test_delete_entity_unlinks(tmp_path):
+    v = Vault(tmp_path / "vault")
+    v.ensure_entity("Berlin", "place")
+    assert v.delete_entity("Berlin") is True
+    assert not (tmp_path / "vault" / "entities" / "Berlin.md").exists()
+    assert v.delete_entity("Berlin") is False  # already gone
