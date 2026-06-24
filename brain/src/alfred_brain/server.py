@@ -38,7 +38,7 @@ def memory_item(rec) -> MemoryItem:
     status = rec.status if rec.status in ("provisional", "confirmed") else "confirmed"
     return MemoryItem(
         id=rec.id, text=rec.text, title=rec.title, type=rec.type,
-        tags=list(rec.tags), status=status, created=rec.created,
+        tags=list(rec.tags), status=status, created=rec.created or now_ts(),
         updated=rec.updated, links=list(rec.links),
     )
 

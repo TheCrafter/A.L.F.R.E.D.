@@ -138,3 +138,44 @@ def test_delete_forgets_acks_and_broadcasts(tmp_path):
     assert removed["mem_id"] == conf.id
     # the record must no longer appear in memory.all()
     assert not any(r.id == conf.id for r in mem.all())
+
+
+# ---------------------------------------------------------------------------
+# 6. memory_item() does not raise when rec.created is empty string
+# ---------------------------------------------------------------------------
+def test_memory_item_empty_created_does_not_raise():
+    """A hand-authored vault note with no 'created' frontmatter arrives as
+    rec.created == "".  memory_item() must fall back to now_ts() instead of
+    blowing up with a ValidationError."""
+    from dataclasses import dataclass
+    from pathlib import Path
+
+    from alfred_brain.server import memory_item
+
+    @dataclass
+    class FakeRec:
+        id: str
+        text: str
+        title: str
+        type: str
+        tags: list
+        status: str
+        created: str
+        updated: str | None
+        links: list
+        path: Path = Path("/fake")
+
+    rec = FakeRec(
+        id="test-id-missing-created",
+        text="Hand-authored note",
+        title="My Note",
+        type="note",
+        tags=[],
+        status="confirmed",
+        created="",
+        updated=None,
+        links=[],
+    )
+
+    result = memory_item(rec)
+    assert result.created != "", "created must be filled in when rec.created is empty"
