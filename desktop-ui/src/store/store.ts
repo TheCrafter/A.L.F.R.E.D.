@@ -8,6 +8,7 @@ import {
 } from "../protocol/client";
 import { fetchStatus, httpBaseFromWs } from "../protocol/status";
 import { openTurn, applyMessage, finalizeOpenTurns, type Turn } from "./turns";
+import { applyMemoryMessage, type MemoryState } from "./memories";
 
 const WIRE_LIMIT = 500;
 
@@ -20,12 +21,18 @@ export interface AppState {
   status?: StatusResponse;
   statusError?: string;
   wire: WireEntry[];
+  memories: MemoryState;
+  memoryFilter: "all" | "provisional";
   setUrl: (url: string) => void;
   connect: () => void;
   disconnect: () => void;
   submit: (text: string, scopeOverride?: string) => void;
   kill: (reason?: string) => void;
   refreshStatus: () => Promise<void>;
+  confirmMemory: (id: string) => void;
+  retagMemory: (id: string, tags: string[]) => void;
+  removeMemory: (id: string) => void;
+  setMemoryFilter: (f: "all" | "provisional") => void;
 }
 
 interface StoreDeps {
@@ -45,6 +52,8 @@ export function createStore(
     url: "ws://127.0.0.1:8767/ws",
     turns: [],
     wire: [],
+    memories: {},
+    memoryFilter: "all",
 
     setUrl: (url) => set({ url }),
 
@@ -64,8 +73,12 @@ export function createStore(
             ? { turns: finalizeOpenTurns(get().turns, new Date().toISOString()) }
             : {}),
         });
+        if (e.phase === "ready") c.requestMemoryList();
       });
-      c.on("message", (m) => set({ turns: applyMessage(get().turns, m) }));
+      c.on("message", (m) => set({
+        turns: applyMessage(get().turns, m),
+        memories: applyMemoryMessage(get().memories, m),
+      }));
       c.on("wire", (w) => set({ wire: [...get().wire, w].slice(-WIRE_LIMIT) }));
       c.connect();
     },
@@ -86,6 +99,11 @@ export function createStore(
     },
 
     kill: (reason) => client?.activateKillSwitch(reason),
+
+    confirmMemory: (id) => client?.editMemory(id, { status: "confirmed" }),
+    retagMemory: (id, tags) => client?.editMemory(id, { tags }),
+    removeMemory: (id) => client?.deleteMemory(id),
+    setMemoryFilter: (f) => set({ memoryFilter: f }),
 
     refreshStatus: async () => {
       try {

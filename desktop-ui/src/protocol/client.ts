@@ -225,6 +225,34 @@ export class ProtocolClient {
     return msg.id;
   }
 
+  requestMemoryList(status?: "provisional" | "confirmed"): string {
+    const msg: Message = {
+      ...this.envelope(),
+      type: "memory.list_request",
+      ...(status ? { status } : {}),
+    };
+    this.sendMessage(msg);
+    return msg.id;
+  }
+
+  editMemory(memId: string, patch: { status?: "provisional" | "confirmed"; tags?: string[] }): string {
+    const msg: Message = {
+      ...this.envelope(),
+      type: "memory.edit",
+      mem_id: memId,
+      ...(patch.status ? { status: patch.status } : {}),
+      ...(patch.tags ? { tags: patch.tags } : {}),
+    };
+    this.sendMessage(msg);
+    return msg.id;
+  }
+
+  deleteMemory(memId: string): string {
+    const msg: Message = { ...this.envelope(), type: "memory.delete", mem_id: memId };
+    this.sendMessage(msg);
+    return msg.id;
+  }
+
   protected envelope(): { v: 1; id: string; ts: string } {
     return { v: 1, id: this.uid("ui"), ts: new Date().toISOString() };
   }

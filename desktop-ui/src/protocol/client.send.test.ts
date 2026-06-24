@@ -48,6 +48,58 @@ describe("ProtocolClient send helpers", () => {
     expect(sent.channel).toBe("desktop");
     expect(sent.reason).toBe("panic");
   });
+
+  it("editMemory sends a memory.edit with mem_id + patch", () => {
+    const client = new ProtocolClient({ url: "ws://x/ws", WebSocketCtor: Ctor, reconnect: false });
+    client.connect();
+    const ws = lastSocket();
+    ws.open();
+    ws.receive(serverHello);
+    const id = client.editMemory("abc", { status: "confirmed" });
+    const sent = JSON.parse(ws.sent.at(-1)!);
+    expect(sent.type).toBe("memory.edit");
+    expect(sent.mem_id).toBe("abc");
+    expect(sent.status).toBe("confirmed");
+    expect(sent.id).toBe(id);
+    expect("tags" in sent).toBe(false);
+  });
+
+  it("deleteMemory sends a memory.delete with mem_id", () => {
+    const client = new ProtocolClient({ url: "ws://x/ws", WebSocketCtor: Ctor, reconnect: false });
+    client.connect();
+    const ws = lastSocket();
+    ws.open();
+    ws.receive(serverHello);
+    const id = client.deleteMemory("abc");
+    const sent = JSON.parse(ws.sent.at(-1)!);
+    expect(sent.type).toBe("memory.delete");
+    expect(sent.mem_id).toBe("abc");
+    expect(sent.id).toBe(id);
+  });
+
+  it("requestMemoryList sends a memory.list_request, omitting status when absent", () => {
+    const client = new ProtocolClient({ url: "ws://x/ws", WebSocketCtor: Ctor, reconnect: false });
+    client.connect();
+    const ws = lastSocket();
+    ws.open();
+    ws.receive(serverHello);
+    client.requestMemoryList();
+    const sent = JSON.parse(ws.sent.at(-1)!);
+    expect(sent.type).toBe("memory.list_request");
+    expect("status" in sent).toBe(false);
+  });
+
+  it("requestMemoryList sends status filter when provided", () => {
+    const client = new ProtocolClient({ url: "ws://x/ws", WebSocketCtor: Ctor, reconnect: false });
+    client.connect();
+    const ws = lastSocket();
+    ws.open();
+    ws.receive(serverHello);
+    client.requestMemoryList("provisional");
+    const sent = JSON.parse(ws.sent.at(-1)!);
+    expect(sent.type).toBe("memory.list_request");
+    expect(sent.status).toBe("provisional");
+  });
 });
 
 describe("ProtocolClient reconnect", () => {
