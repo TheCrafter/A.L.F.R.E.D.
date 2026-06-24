@@ -185,7 +185,8 @@ async def test_no_user_name_no_identity_instruction(tmp_path):
 
     prov = _Capture()
     await Extractor(prov, mem).extract(_batch())   # no user_name
-    assert "named" not in prov.system.lower() or "the user is named" not in prov.system.lower()
+    assert "the user is named" not in prov.system.lower()
+    assert prov.system == EXTRACTION_SYSTEM   # bare prompt, no identity clause appended
 
 
 async def test_sensitive_tag_forces_provisional(tmp_path):
